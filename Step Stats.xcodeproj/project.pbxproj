@@ -16,6 +16,9 @@
 		E16455CB2A09EF3700E87DAF /* HealthAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455CA2A09EF3700E87DAF /* HealthAuthorization.swift */; };
 		E16455CD2A09F24300E87DAF /* GetHealthData.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455CC2A09F24300E87DAF /* GetHealthData.swift */; };
 		E16455CF2A09F9E800E87DAF /* WidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455CE2A09F9E800E87DAF /* WidgetView.swift */; };
+		E16455D32A0AD77900E87DAF /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455D22A0AD77900E87DAF /* MapView.swift */; };
+		E16455F12A0B0DEF00E87DAF /* RecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455F02A0B0DEF00E87DAF /* RecordsView.swift */; };
+		E16455F32A0B4B1200E87DAF /* TestGetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455F22A0B4B1200E87DAF /* TestGetData.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +33,9 @@
 		E16455CA2A09EF3700E87DAF /* HealthAuthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthAuthorization.swift; sourceTree = "<group>"; };
 		E16455CC2A09F24300E87DAF /* GetHealthData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GetHealthData.swift; sourceTree = "<group>"; };
 		E16455CE2A09F9E800E87DAF /* WidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetView.swift; sourceTree = "<group>"; };
+		E16455D22A0AD77900E87DAF /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
+		E16455F02A0B0DEF00E87DAF /* RecordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsView.swift; sourceTree = "<group>"; };
+		E16455F22A0B4B1200E87DAF /* TestGetData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestGetData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +68,8 @@
 		E16455B02A09D64F00E87DAF /* Step Stats */ = {
 			isa = PBXGroup;
 			children = (
+				E16455F22A0B4B1200E87DAF /* TestGetData.swift */,
+				E16455F02A0B0DEF00E87DAF /* RecordsView.swift */,
 				E16455C72A09DF3200E87DAF /* Step Stats.entitlements */,
 				E16455BF2A09D67A00E87DAF /* CumulativeView.swift */,
 				E16455B12A09D64F00E87DAF /* Step_StatsApp.swift */,
@@ -72,6 +80,7 @@
 				E16455CA2A09EF3700E87DAF /* HealthAuthorization.swift */,
 				E16455CC2A09F24300E87DAF /* GetHealthData.swift */,
 				E16455CE2A09F9E800E87DAF /* WidgetView.swift */,
+				E16455D22A0AD77900E87DAF /* MapView.swift */,
 			);
 			path = "Step Stats";
 			sourceTree = "<group>";
@@ -155,11 +164,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				E16455CB2A09EF3700E87DAF /* HealthAuthorization.swift in Sources */,
+				E16455D32A0AD77900E87DAF /* MapView.swift in Sources */,
 				E16455B42A09D64F00E87DAF /* MainView.swift in Sources */,
+				E16455F12A0B0DEF00E87DAF /* RecordsView.swift in Sources */,
 				E16455CF2A09F9E800E87DAF /* WidgetView.swift in Sources */,
 				E16455C02A09D67A00E87DAF /* CumulativeView.swift in Sources */,
 				E16455B22A09D64F00E87DAF /* Step_StatsApp.swift in Sources */,
 				E16455CD2A09F24300E87DAF /* GetHealthData.swift in Sources */,
+				E16455F32A0B4B1200E87DAF /* TestGetData.swift in Sources */,
 				E16455C92A09EE3F00E87DAF /* UnitManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

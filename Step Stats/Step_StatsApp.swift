@@ -11,7 +11,7 @@ import SwiftUI
 struct Step_StatsApp: App {
     var body: some Scene {
         WindowGroup {
-            MainView()
+            TestGetData()
         }
     }
 }

@@ -1,18 +1,24 @@
 import SwiftUI
 
 struct WidgetData: Hashable {
-    let title: String
-    let symbolName: String
-    let destination: AnyView
+    let title: String // Title of widget
+    let destination: AnyView // Where widget goes when tapped
+    let symbolName: String // Name of glyph if displayed
+    let hasData: Bool // Should display data rather than glyph?
+    var data: String // Data point for widget (ex. num steps)
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(title)
         hasher.combine(symbolName)
     }
-        
+    
     static func ==(lhs: WidgetData, rhs: WidgetData) -> Bool {
         return lhs.title == rhs.title && lhs.symbolName == rhs.symbolName
     }
+}
+
+class WidgetDataStore: ObservableObject {
+    @Published var widgets: [WidgetData] = []
 }
 
 struct WidgetView: View {
@@ -26,37 +32,46 @@ struct WidgetView: View {
     private func generateWidgets() -> some View {
         ForEach(widgets, id: \.self) { widget in
             NavigationLink(destination: widget.destination) {
-                HStack {
-                    Text(widget.title)
-                        .font(.system(size: 20).bold()) // Make the text bold
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: widget.symbolName)
-                        .font(.title)
-                        .foregroundColor(.white)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.purple, Color.blue]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(height: buttonHeight)
+                    
+                    HStack {
+                        Text(widget.title)
+                            .font(.system(size: 24).bold())
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        if widget.hasData {
+                            
+                            VStack(alignment: .trailing) {
+                                Text(widget.data)
+                                    .font(.system(size: 22))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                            }
+                        } else {
+                            
+                            Image(systemName: widget.symbolName)
+                                .font(.title)
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+
                 }
-                .padding(.horizontal, 20)
-                .frame(height: buttonHeight) // Set a fixed height for the button
-                .background(
-                    LinearGradient(
-                        gradient: Gradient(colors: [Color.purple, Color.blue]), // Customize the gradient colors here
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
                 .cornerRadius(20)
             }
             .buttonStyle(WidgetButtonStyle())
-            .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .transition(.move(edge: .leading))
-        }
-        .onMove(perform: moveWidget)
-    }
-    
-    private func moveWidget(from source: IndexSet, to destination: Int) {
-        withAnimation {
-            // Perform the necessary widget movement logic here
         }
     }
 }

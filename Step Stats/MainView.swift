@@ -1,22 +1,29 @@
+//
+//  ContentView.swift
+//  Step Stats
+//
+//  Created by Michael Bryant on 5/9/23.
+//
+
 import SwiftUI
 
 struct MainView: View {
     @State private var widgets = [
-        WidgetData(title: "Cumulative Stats", symbolName: "chart.bar.fill", destination: AnyView(CumulativeView())),
-        WidgetData(title: "Records", symbolName: "list.bullet.rectangle", destination: AnyView(Text("Records View"))),
-        WidgetData(title: "Workout Mapper", symbolName: "map.fill", destination: AnyView(Text("Workout Mapper View")))
-    ]
+        WidgetData(title: "Cumulative Stats", destination: AnyView(CumulativeView()), symbolName: "chart.bar.fill", hasData: false, data:""),
+        WidgetData(title: "Records", destination: AnyView(CumulativeView()), symbolName: "list.bullet.rectangle", hasData: false, data:""),
+        WidgetData(title: "Workout Mapper", destination: AnyView(CumulativeView()), symbolName: "map.fill", hasData: false, data:""),
+]
     
     @State private var showSettings = false
     @State private var selectedUnits = 0
     
-    private let buttonHeight: CGFloat = 100 // Set the desired button height here
-    private let widgetSpacing: CGFloat = 10 // Set the desired spacing between widgets here
+    private let buttonHeight: CGFloat = 100
+    private let widgetSpacing: CGFloat = 10
     
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: widgetSpacing) { // Use widgetSpacing for spacing between widgets
+                VStack(spacing: widgetSpacing) {
                     WidgetView(widgets: widgets, buttonHeight: buttonHeight)
                 }
                 .padding()
