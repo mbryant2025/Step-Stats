@@ -23,14 +23,14 @@ struct TestGetData: View {
         }
     }
     
-    private func requestAuthorization() {
-        let readTypes: Set<HKObjectType> = [HKObjectType.activitySummaryType()]
-        healthStore.requestAuthorization(toShare: nil, read: readTypes) { (success, error) in
-            if let error = error {
-                print("Error requesting HealthKit authorization: \(error.localizedDescription)")
-            }
-        }
-    }
+//    private func requestAuthorization() {
+//        let readTypes: Set<HKObjectType> = [HKObjectType.activitySummaryType()]
+//        healthStore.requestAuthorization(toShare: nil, read: readTypes) { (success, error) in
+//            if let error = error {
+//                print("Error requesting HealthKit authorization: \(error.localizedDescription)")
+//            }
+//        }
+//    }
     
     private func fetchTotalStandHours() {
         let calendar = Calendar.current
