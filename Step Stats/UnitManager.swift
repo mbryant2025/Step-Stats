@@ -9,6 +9,7 @@ import Foundation
 
 let kmToMiles = 0.62137119
 let milesToKm = 1.609344
+let meterToKm = 0.001
 
 enum UnitType {
     case km

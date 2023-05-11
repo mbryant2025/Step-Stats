@@ -59,13 +59,13 @@ struct SettingsView: View {
             Form {
                 Section(header: Text("Units")) {
                     Picker("Units", selection: $selectedUnits) {
-                        Text("Metric").tag(0)
-                        Text("Imperial").tag(1)
+                        Text("Miles").tag(0)
+                        Text("km").tag(1)
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     .onChange(of: selectedUnits) { newValue in
                         // Update the unit type based on the selectedUnits value
-                        UnitManager.shared.unitType = (newValue == 0) ? .km : .mi
+                        UnitManager.shared.unitType = (newValue == 0) ? .mi : .km
                     }
                 }
             }

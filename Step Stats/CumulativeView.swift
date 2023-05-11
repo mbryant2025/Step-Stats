@@ -24,11 +24,9 @@ struct CumulativeView: View {
     
     private func fetchCumulativeHealthData() {
         
-    //------------------------------
-        
         let dispatchGroup = DispatchGroup()
         
-        //MOST DATA HANDLED INDIVIDUALLY (ASYNC)
+        //DATA HANDLED INDIVIDUALLY (ASYNC)
         
         for (quantityType, title) in healthDataTypes {
             dispatchGroup.enter()
@@ -54,32 +52,61 @@ struct CumulativeView: View {
                     dispatchGroup.leave()
                 }
             }
-            
-            //APPLE WATCH SUMMARY DATA GIVEN TOGETHER -- HANDLED AS A GROUP AND ARE DUMPED
-            
-            getAllCumulativeHealthDataWatch { results in
-                for (title, value) in results {
+        }
+        
+        //APPLE WATCH SUMMARY DATA GIVEN TOGETHER -- HANDLED AS A GROUP AND ARE DUMPED
+        
+        getAllCumulativeHealthDataWatch { results in
+            for (title, value) in results {
+                
+                dispatchGroup.enter()
+                
+                DispatchQueue.main.async {
                     
-                    dispatchGroup.enter()
+                    let widgetData = WidgetData( //TODO SET WIDGET DESTINATION
+                        title: title,
+                        destination: AnyView(Text("iruhfciuerubn")),
+                        symbolName: "",
+                        hasData: true,
+                        data: value
+                    )
                     
-                    DispatchQueue.main.async {
-                        
-                        let widgetData = WidgetData( //TODO SET WIDGET DESTINATION
-                            title: title,
-                            destination: AnyView(Text("iruhfciuerubn")),
-                            symbolName: "",
-                            hasData: true,
-                            data: value
-                        )
-                        
-                        if let index = widgetDataStore.widgets.firstIndex(where: { $0.title == title }) {
-                            widgetDataStore.widgets[index] = widgetData
-                        } else {
-                            widgetDataStore.widgets.append(widgetData)
-                        }
-                        
-                        dispatchGroup.leave()
+                    if let index = widgetDataStore.widgets.firstIndex(where: { $0.title == title }) {
+                        widgetDataStore.widgets[index] = widgetData
+                    } else {
+                        widgetDataStore.widgets.append(widgetData)
                     }
+                    
+                    dispatchGroup.leave()
+                }
+            }
+        }
+        
+        //TODO COMBINE THESE TWO INTO ONE FUNCTION
+        
+        //ADD WORKOUT DATA, IF THERE IS ANY
+        getAllCumulativeWorkoutData { results in
+            for (title, value) in results {
+                
+                dispatchGroup.enter()
+                
+                DispatchQueue.main.async {
+                    
+                    let widgetData = WidgetData( //TODO SET WIDGET DESTINATION
+                        title: title,
+                        destination: AnyView(Text("iruhfciuerubn")),
+                        symbolName: "",
+                        hasData: true,
+                        data: value
+                    )
+                    
+                    if let index = widgetDataStore.widgets.firstIndex(where: { $0.title == title }) {
+                        widgetDataStore.widgets[index] = widgetData
+                    } else {
+                        widgetDataStore.widgets.append(widgetData)
+                    }
+                    
+                    dispatchGroup.leave()
                 }
             }
         }
