@@ -45,10 +45,13 @@ struct MapContainerView: UIViewRepresentable {
     @State private var workouts: [HKWorkout] = []
     
     func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView(frame: .zero)
-        mapView.delegate = context.coordinator
-        return mapView
-    }
+            let mapView = MKMapView(frame: .zero)
+            mapView.delegate = context.coordinator
+            let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePolylineTap(_:)))
+            mapView.addGestureRecognizer(tapGesture)
+            return mapView
+        }
+
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
         if workouts.isEmpty {
@@ -92,22 +95,68 @@ struct MapContainerView: UIViewRepresentable {
     }
     
     class Coordinator: NSObject, MKMapViewDelegate {
-        var parent: MapContainerView
-        
-        init(_ parent: MapContainerView) {
-            self.parent = parent
-        }
-        
-        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if overlay is MKPolyline {
-                let renderer = MKPolylineRenderer(overlay: overlay)
-                renderer.strokeColor = UIColor.red
-                renderer.lineWidth = 5
-                return renderer
+            var parent: MapContainerView
+            
+            init(_ parent: MapContainerView) {
+                self.parent = parent
             }
-            return MKOverlayRenderer()
+            
+            func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+                if overlay is MKPolyline {
+                    let renderer = MKPolylineRenderer(overlay: overlay)
+                    renderer.strokeColor = UIColor.red
+                    renderer.lineWidth = 5
+                    return renderer
+                }
+                return MKOverlayRenderer()
+            }
+            
+            @objc func handlePolylineTap(_ gestureRecognizer: UITapGestureRecognizer) {
+                let mapView = gestureRecognizer.view as! MKMapView
+                let touchPoint = gestureRecognizer.location(in: mapView)
+                let coordinates = mapView.convert(touchPoint, toCoordinateFrom: mapView)
+                
+                // Find the polyline that was tapped
+                for overlay in mapView.overlays {
+                    if let polyline = overlay as? MKPolyline {
+                        if isCoordinateOnPolyline(coordinates, polyline: polyline) {
+                            // Handle polyline tap here
+                            print("Polyline tapped!")
+                            break
+                        }
+                    }
+                }
+            }
+            
+            func isCoordinateOnPolyline(_ coordinate: CLLocationCoordinate2D, polyline: MKPolyline) -> Bool {
+                let tolerance: CLLocationDistance = 10 // Tolerance in meters
+                
+                for i in 0 ..< polyline.pointCount - 1 {
+                    let startMapPoint = polyline.points()[i]
+                    let endMapPoint = polyline.points()[i + 1]
+                    
+                    let startCoordinate = startMapPoint.coordinate
+                    let endCoordinate = endMapPoint.coordinate
+                    
+                    let startLocation = CLLocation(latitude: startCoordinate.latitude, longitude: startCoordinate.longitude)
+                    let endLocation = CLLocation(latitude: endCoordinate.latitude, longitude: endCoordinate.longitude)
+                    let polylineDistance = startLocation.distance(from: endLocation)
+                    
+                    let startToTapDistance = CLLocation(latitude: startCoordinate.latitude, longitude: startCoordinate.longitude).distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
+                    let endToTapDistance = CLLocation(latitude: endCoordinate.latitude, longitude: endCoordinate.longitude).distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
+                    
+                    if startToTapDistance + endToTapDistance - polylineDistance < tolerance {
+                        return true
+                    }
+                }
+                
+                return false
+            }
+
+
         }
-    }
+
+
 }
 
 
