@@ -41,12 +41,10 @@ public func getCumulativeHealthData(for dataType: HKQuantityTypeIdentifier, comp
                         value = sum.doubleValue(for: unit)
                         if UnitManager.shared.unitType == .km {
                             unitString = "km"
-                            print("UNIT STRING IS KM")
                         }
                         else {
                             unitString = "mi"
                             value *= kmToMiles
-                            print("UNIT STRING IS MI")
                         }
                     default:
                         unit = .count()

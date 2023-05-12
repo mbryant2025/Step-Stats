@@ -11,7 +11,7 @@ struct MainView: View {
     @State private var widgets = [
         WidgetData(title: "Cumulative Stats", destination: AnyView(CumulativeView()), symbolName: "chart.bar.fill", hasData: false, data:""),
         WidgetData(title: "Records", destination: AnyView(CumulativeView()), symbolName: "list.bullet.rectangle", hasData: false, data:""),
-        WidgetData(title: "Workout Mapper", destination: AnyView(CumulativeView()), symbolName: "map.fill", hasData: false, data:""),
+        WidgetData(title: "Workout Mapper", destination: AnyView(MapView()), symbolName: "map.fill", hasData: false, data:""),
 ]
     
     @State private var showSettings = false

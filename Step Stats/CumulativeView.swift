@@ -37,7 +37,7 @@ struct CumulativeView: View {
                     
                     let widgetData = WidgetData( //TODO SET WIDGET DESTINATION
                         title: title,
-                        destination: AnyView(Text("iruhfciuerubn")),
+                        destination: AnyView(QuantityStatsView()),
                         symbolName: "",
                         hasData: true,
                         data: result

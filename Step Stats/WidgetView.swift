@@ -10,10 +10,12 @@ struct WidgetData: Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(title)
         hasher.combine(symbolName)
+        hasher.combine(hasData)
+        hasher.combine(data)
     }
     
     static func ==(lhs: WidgetData, rhs: WidgetData) -> Bool {
-        return lhs.title == rhs.title && lhs.symbolName == rhs.symbolName
+        return lhs.title == rhs.title && lhs.symbolName == rhs.symbolName && rhs.hasData == rhs.hasData && rhs.data == rhs.data
     }
 }
 
@@ -48,6 +50,8 @@ struct WidgetView: View {
                             .font(.system(size: 24).bold())
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.5)
                         
                         if widget.hasData {
                             
@@ -56,6 +60,8 @@ struct WidgetView: View {
                                     .font(.system(size: 22))
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity, alignment: .trailing)
+                                    .lineLimit(2)
+                                    .minimumScaleFactor(0.5)
                             }
                         } else {
                             
