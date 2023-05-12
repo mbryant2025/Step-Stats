@@ -43,6 +43,7 @@ struct MapInfoView: View {
 
 struct MapContainerView: UIViewRepresentable {
     @State private var workouts: [HKWorkout] = []
+    @State private var selectedPolyline: MKPolyline?
     
     func makeUIView(context: Context) -> MKMapView {
             let mapView = MKMapView(frame: .zero)
@@ -104,32 +105,62 @@ struct MapContainerView: UIViewRepresentable {
             func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
                 if overlay is MKPolyline {
                     let renderer = MKPolylineRenderer(overlay: overlay)
-                    renderer.strokeColor = UIColor.red
+                    
+                    if let tappedPolyline = overlay as? MKPolyline, let selectedPolyline = parent.selectedPolyline {
+                        // Change color for the tapped polyline
+                        renderer.strokeColor = tappedPolyline.isEqual(selectedPolyline) ? UIColor.orange : UIColor.red
+                    } else {
+                        renderer.strokeColor = UIColor.red
+                    }
+                    
                     renderer.lineWidth = 5
                     return renderer
                 }
                 return MKOverlayRenderer()
             }
             
-            @objc func handlePolylineTap(_ gestureRecognizer: UITapGestureRecognizer) {
-                let mapView = gestureRecognizer.view as! MKMapView
-                let touchPoint = gestureRecognizer.location(in: mapView)
-                let coordinates = mapView.convert(touchPoint, toCoordinateFrom: mapView)
-                
-                // Find the polyline that was tapped
-                for overlay in mapView.overlays {
-                    if let polyline = overlay as? MKPolyline {
-                        if isCoordinateOnPolyline(coordinates, polyline: polyline) {
-                            // Handle polyline tap here
-                            print("Polyline tapped!")
-                            break
-                        }
+        @objc func handlePolylineTap(_ gestureRecognizer: UITapGestureRecognizer) {
+            let mapView = gestureRecognizer.view as! MKMapView
+            let touchPoint = gestureRecognizer.location(in: mapView)
+            let coordinates = mapView.convert(touchPoint, toCoordinateFrom: mapView)
+            
+            var newSelectedPolyline: MKPolyline?
+            
+            // Find the polyline that was tapped
+            for overlay in mapView.overlays {
+                if let polyline = overlay as? MKPolyline {
+                    if isCoordinateOnPolyline(coordinates, polyline: polyline) {
+                        newSelectedPolyline = polyline
+                        break
                     }
                 }
             }
             
+            // Update the color of the selected polyline and bring it to the front
+            if let newPolyline = newSelectedPolyline {
+                if let previousPolyline = parent.selectedPolyline, let renderer = mapView.renderer(for: previousPolyline) as? MKPolylineRenderer {
+                    renderer.strokeColor = UIColor.red
+                }
+                parent.selectedPolyline = newPolyline
+                
+                // Remove and re-add the selected polyline to bring it to the front
+                mapView.removeOverlay(newPolyline)
+                mapView.addOverlay(newPolyline)
+                
+                if let renderer = mapView.renderer(for: newPolyline) as? MKPolylineRenderer {
+                    renderer.strokeColor = UIColor.orange
+                }
+            }
+        }
+
+
+
+
+
+
+            
             func isCoordinateOnPolyline(_ coordinate: CLLocationCoordinate2D, polyline: MKPolyline) -> Bool {
-                let tolerance: CLLocationDistance = 10 // Tolerance in meters
+                let tolerance: CLLocationDistance = 3 // Tolerance in meters
                 
                 for i in 0 ..< polyline.pointCount - 1 {
                     let startMapPoint = polyline.points()[i]
