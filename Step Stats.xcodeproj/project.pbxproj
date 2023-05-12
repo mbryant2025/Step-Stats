@@ -19,7 +19,6 @@
 		E16455D32A0AD77900E87DAF /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455D22A0AD77900E87DAF /* MapView.swift */; };
 		E16455F12A0B0DEF00E87DAF /* RecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455F02A0B0DEF00E87DAF /* RecordsView.swift */; };
 		E173B70D2A0D92EA00C41792 /* QuantityStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E173B70C2A0D92EA00C41792 /* QuantityStatsView.swift */; };
-		E173B7102A0DE58500C41792 /* TestPlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E173B70F2A0DE58500C41792 /* TestPlot.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,7 +36,6 @@
 		E16455D22A0AD77900E87DAF /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
 		E16455F02A0B0DEF00E87DAF /* RecordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsView.swift; sourceTree = "<group>"; };
 		E173B70C2A0D92EA00C41792 /* QuantityStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuantityStatsView.swift; sourceTree = "<group>"; };
-		E173B70F2A0DE58500C41792 /* TestPlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestPlot.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,7 +74,6 @@
 				E16455F52A0D527100E87DAF /* Frontend */,
 				E16455F42A0D525600E87DAF /* Backend */,
 				E16455B72A09D65100E87DAF /* Preview Content */,
-				E173B70F2A0DE58500C41792 /* TestPlot.swift */,
 			);
 			path = "Step Stats";
 			sourceTree = "<group>";
@@ -201,7 +198,6 @@
 				E16455CB2A09EF3700E87DAF /* HealthAuthorization.swift in Sources */,
 				E16455D32A0AD77900E87DAF /* MapView.swift in Sources */,
 				E16455B42A09D64F00E87DAF /* MainView.swift in Sources */,
-				E173B7102A0DE58500C41792 /* TestPlot.swift in Sources */,
 				E173B70D2A0D92EA00C41792 /* QuantityStatsView.swift in Sources */,
 				E16455F12A0B0DEF00E87DAF /* RecordsView.swift in Sources */,
 				E16455CF2A09F9E800E87DAF /* WidgetView.swift in Sources */,

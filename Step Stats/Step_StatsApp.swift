@@ -11,7 +11,6 @@ import SwiftUI
 struct Step_StatsApp: App {
     var body: some Scene {
         WindowGroup {
-//            ContentView2()
             MainView()
         }
     }

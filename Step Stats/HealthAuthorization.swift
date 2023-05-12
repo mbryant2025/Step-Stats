@@ -16,7 +16,8 @@ public func requestAuthorization() {
         HKObjectType.quantityType(forIdentifier: .stepCount)!,
         HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
         HKObjectType.quantityType(forIdentifier: .flightsClimbed)!,
-        HKObjectType.workoutType()
+        HKObjectType.workoutType(),
+        HKSeriesType.workoutRoute()
     ]
     
     healthStore.requestAuthorization(toShare: nil, read: readTypes) { (success, error) in

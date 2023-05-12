@@ -7,6 +7,10 @@
 
 import Foundation
 import HealthKit
+import MapKit
+
+//CUMULATIVE DATA
+//=====================================================================
 
 //NOT FOR WATCH
 public let healthDataTypes: [HKQuantityTypeIdentifier: String] = [
@@ -245,6 +249,90 @@ public func getAllCumulativeWorkoutData(for completion: @escaping ([String: Stri
     }
     let healthStore = HKHealthStore()
     healthStore.execute(query)
+}
+
+//WORKOUT ROUTES
+//=====================================================================
+
+
+func readWorkouts(completion: @escaping ([HKWorkout]?) -> Void) {
+    let workoutType = HKObjectType.workoutType()
+    
+    let query = HKSampleQuery(sampleType: workoutType, predicate: nil, limit: HKObjectQueryNoLimit, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]) { (query, samplesOrNil, errorOrNil) in
+        if let error = errorOrNil {
+            print("Failed to read workouts: \(error.localizedDescription)")
+            completion(nil)
+            return
+        }
+        
+        guard let samples = samplesOrNil as? [HKWorkout] else {
+            print("Invalid workout samples")
+            completion(nil)
+            return
+        }
+        
+        completion(samples)
+    }
+    
+    store.execute(query)
+}
+
+
+
+
+func getWorkoutRoute(workout: HKWorkout) async -> [HKWorkoutRoute]? {
+    let byWorkout = HKQuery.predicateForObjects(from: workout)
+
+    let samples = try! await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
+        store.execute(HKAnchoredObjectQuery(type: HKSeriesType.workoutRoute(), predicate: byWorkout, anchor: nil, limit: HKObjectQueryNoLimit, resultsHandler: { (query, samples, deletedObjects, anchor, error) in
+            if let hasError = error {
+                continuation.resume(throwing: hasError)
+                return
+            }
+
+            guard let samples = samples else {
+                return
+            }
+
+            continuation.resume(returning: samples)
+        }))
+    }
+
+    guard let workouts = samples as? [HKWorkoutRoute] else {
+        return nil
+    }
+
+    return workouts
+}
+
+func getLocationDataForRoute(givenRoute: HKWorkoutRoute) async -> [CLLocation] {
+    let locations = try! await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[CLLocation], Error>) in
+        var allLocations: [CLLocation] = []
+
+        // Create the route query.
+        let query = HKWorkoutRouteQuery(route: givenRoute) { (query, locationsOrNil, done, errorOrNil) in
+
+            if let error = errorOrNil {
+                continuation.resume(throwing: error)
+                return
+            }
+
+            guard let currentLocationBatch = locationsOrNil else {
+                fatalError("*** Invalid State: This can only fail if there was an error. ***")
+            }
+
+            allLocations.append(contentsOf: currentLocationBatch)
+
+            if done {
+                continuation.resume(returning: allLocations)
+            }
+        }
+
+        store.execute(query)
+    }
+
+    return locations
+    
 }
 
 public let workoutTypeMap: [Int: String] = [
