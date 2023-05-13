@@ -38,7 +38,7 @@ struct WidgetView: View {
                     RoundedRectangle(cornerRadius: 20)
                         .fill(
                             LinearGradient(
-                                gradient: Gradient(colors: [Color.purple, Color.blue]),
+                                gradient: Gradient(colors: [Color("ButtonColor2"), Color("ButtonColor1")]),
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )

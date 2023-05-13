@@ -34,7 +34,7 @@ struct MapView: View {
                         .font(.headline)
                         .foregroundColor(.white)
                         .padding()
-                        .background(Color.blue)
+                        .background(Color("ButtonColor1"))
                         .cornerRadius(10)
                 }
                 .padding(.bottom, 16)
@@ -64,17 +64,22 @@ struct MapView: View {
             MapInfoView(showInfo: $showInfo)
         }
         .sheet(isPresented: $showPanel) {
-            SlideUpPanelView(showPanel: $showPanel, selectedPolyline: $selectedPolyline)
+            SlideUpPanelView(showPanel: $showPanel)
+                .onAppear {
+                    selectedPolyline = $selectedPolyline.wrappedValue
+                }
+                .onChange(of: selectedPolyline) { newValue in
+                    selectedPolyline = newValue
+                }
+
         }
-
-
     }
 }
 
 
 struct SlideUpPanelView: View {
     @Binding var showPanel: Bool
-    @Binding var selectedPolyline: WorkoutStoreMKPolyline?
+    @State var selectedPolyline: WorkoutStoreMKPolyline?
     
     private let panelHeight: CGFloat = 300
     private let handleHeight: CGFloat = 30
@@ -102,20 +107,21 @@ struct SlideUpPanelView: View {
     var content: some View {
         VStack {
             if let selectedPolyline = selectedPolyline {
-                Text(selectedPolyline.workout?.description ?? "")
-                    .font(.headline)
-                    .padding()
-            }
-            else {
+                if let workout = selectedPolyline.workout {
+                    Text(workout.description)
+                        .font(.headline)
+                        .padding()
+                } else {
+                    Text("No workout found")
+                        .font(.headline)
+                        .padding()
+                }
+            } else {
                 Text("LOL NO TY")
                     .font(.headline)
                     .padding()
             }
-
-
-
-
-
+            
             Spacer()
             
             Button(action: {
@@ -126,15 +132,14 @@ struct SlideUpPanelView: View {
                     .font(.headline)
                     .foregroundColor(.white)
                     .padding()
-                    .background(Color.red)
+                    .background(Color("ButtonColor2"))
                     .cornerRadius(10)
             }
             .padding(.bottom, 16)
         }
         .padding(.horizontal)
-        .frame(maxWidth: .infinity, maxHeight: .infinity) // Fill the available space
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-
 }
 
 
@@ -221,12 +226,12 @@ struct MapContainerView: UIViewRepresentable {
                 
                 if let tappedPolyline = overlay as? WorkoutStoreMKPolyline, let selectedPolyline = parent.selectedPolyline {
                     // Change color for the tapped polyline
-                    renderer.strokeColor = tappedPolyline.isEqual(selectedPolyline) ? UIColor.orange : UIColor.red
+                    renderer.strokeColor = tappedPolyline.isEqual(selectedPolyline) ? UIColor(Color("RouteSelected")) : UIColor(Color("Route"))
                 } else {
-                    renderer.strokeColor = UIColor.red
+                    renderer.strokeColor = UIColor(Color("Route"))
                 }
                 
-                renderer.lineWidth = 5
+                renderer.lineWidth = 6
                 return renderer
             }
             return MKOverlayRenderer()
@@ -244,7 +249,7 @@ struct MapContainerView: UIViewRepresentable {
                 if let polyline = overlay as? WorkoutStoreMKPolyline {
                     if isCoordinateOnPolyline(coordinates, polyline: polyline) {
                         newSelectedPolyline = polyline
-                        print(newSelectedPolyline?.workout)
+                        print(newSelectedPolyline?.workout!)
                         break
                     }
                 }
@@ -253,7 +258,7 @@ struct MapContainerView: UIViewRepresentable {
             // Update the color of the selected polyline and bring it to the front
             if let newPolyline = newSelectedPolyline {
                 if let previousPolyline = parent.selectedPolyline, let renderer = mapView.renderer(for: previousPolyline) as? MKPolylineRenderer {
-                    renderer.strokeColor = UIColor.red
+                    renderer.strokeColor = UIColor(Color("Route"))
                 }
                 parent.selectedPolyline = newPolyline
                 
@@ -262,7 +267,7 @@ struct MapContainerView: UIViewRepresentable {
                 mapView.addOverlay(newPolyline)
                 
                 if let renderer = mapView.renderer(for: newPolyline) as? MKPolylineRenderer {
-                    renderer.strokeColor = UIColor.orange
+                    renderer.strokeColor = UIColor(Color("RouteSelected"))
                 }
             }
         }
