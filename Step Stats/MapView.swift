@@ -17,11 +17,11 @@ class WorkoutStoreMKPolyline: MKPolyline {
 struct MapView: View {
     @State private var showInfo = false
     @State private var showPanel = false
-    @State private var selectedPolyline: WorkoutStoreMKPolyline?
+    @State private var selectedWorkoutPolyline: WorkoutStoreMKPolyline?
     
     var body: some View {
         ZStack {
-            MapContainerView()
+            MapContainerView(selectedPolyline: $selectedWorkoutPolyline)
                 .ignoresSafeArea()
             
             VStack {
@@ -64,14 +64,7 @@ struct MapView: View {
             MapInfoView(showInfo: $showInfo)
         }
         .sheet(isPresented: $showPanel) {
-            SlideUpPanelView(showPanel: $showPanel)
-                .onAppear {
-                    selectedPolyline = $selectedPolyline.wrappedValue
-                }
-                .onChange(of: selectedPolyline) { newValue in
-                    selectedPolyline = newValue
-                }
-
+            SlideUpPanelView(showPanel: $showPanel, selectedPolyline: $selectedWorkoutPolyline)
         }
     }
 }
@@ -79,7 +72,7 @@ struct MapView: View {
 
 struct SlideUpPanelView: View {
     @Binding var showPanel: Bool
-    @State var selectedPolyline: WorkoutStoreMKPolyline?
+    @Binding var selectedPolyline: WorkoutStoreMKPolyline?
     
     private let panelHeight: CGFloat = 300
     private let handleHeight: CGFloat = 30
@@ -106,20 +99,13 @@ struct SlideUpPanelView: View {
     
     var content: some View {
         VStack {
+
             if let selectedPolyline = selectedPolyline {
                 if let workout = selectedPolyline.workout {
                     Text(workout.description)
                         .font(.headline)
                         .padding()
-                } else {
-                    Text("No workout found")
-                        .font(.headline)
-                        .padding()
                 }
-            } else {
-                Text("LOL NO TY")
-                    .font(.headline)
-                    .padding()
             }
             
             Spacer()
@@ -139,6 +125,10 @@ struct SlideUpPanelView: View {
         }
         .padding(.horizontal)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    public func getSelectedWorkout() -> HKWorkout {
+        (selectedPolyline?.workout)!
     }
 }
 
@@ -160,8 +150,9 @@ struct MapInfoView: View {
 }
 
 struct MapContainerView: UIViewRepresentable {
+    @Binding var selectedPolyline: WorkoutStoreMKPolyline?
+    
     @State private var workouts: [HKWorkout] = []
-    @State private var selectedPolyline: WorkoutStoreMKPolyline?
     
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView(frame: .zero)
@@ -249,7 +240,6 @@ struct MapContainerView: UIViewRepresentable {
                 if let polyline = overlay as? WorkoutStoreMKPolyline {
                     if isCoordinateOnPolyline(coordinates, polyline: polyline) {
                         newSelectedPolyline = polyline
-                        print(newSelectedPolyline?.workout!)
                         break
                     }
                 }
