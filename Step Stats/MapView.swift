@@ -4,10 +4,20 @@ import MapKit
 
 let store = HKHealthStore()
 
+class WorkoutStoreMKPolyline: MKPolyline {
+    var workout: HKWorkout?
+    
+    convenience init(coordinates coords: UnsafePointer<CLLocationCoordinate2D>, count: Int, workout: HKWorkout?) {
+        self.init(coordinates: coords, count: count)
+        self.workout = workout
+    }
+}
+
+
 struct MapView: View {
     @State private var showInfo = false
     @State private var showPanel = false
-    @State private var selectedPolyline: MKPolyline?
+    @State private var selectedPolyline: WorkoutStoreMKPolyline?
     
     var body: some View {
         ZStack {
@@ -56,14 +66,15 @@ struct MapView: View {
         .sheet(isPresented: $showPanel) {
             SlideUpPanelView(showPanel: $showPanel, selectedPolyline: $selectedPolyline)
         }
+
+
     }
 }
 
 
-
 struct SlideUpPanelView: View {
     @Binding var showPanel: Bool
-    @Binding var selectedPolyline: MKPolyline?
+    @Binding var selectedPolyline: WorkoutStoreMKPolyline?
     
     private let panelHeight: CGFloat = 300
     private let handleHeight: CGFloat = 30
@@ -73,6 +84,7 @@ struct SlideUpPanelView: View {
             arrowIndicator
             content
         }
+        
     }
     
     var arrowIndicator: some View {
@@ -89,10 +101,21 @@ struct SlideUpPanelView: View {
     
     var content: some View {
         VStack {
-            Text("Panel Content")
-                .font(.headline)
-                .padding()
-            
+            if let selectedPolyline = selectedPolyline {
+                Text(selectedPolyline.workout?.description ?? "")
+                    .font(.headline)
+                    .padding()
+            }
+            else {
+                Text("LOL NO TY")
+                    .font(.headline)
+                    .padding()
+            }
+
+
+
+
+
             Spacer()
             
             Button(action: {
@@ -115,8 +138,6 @@ struct SlideUpPanelView: View {
 }
 
 
-
-
 struct MapInfoView: View {
     @Binding var showInfo: Bool
     
@@ -135,7 +156,7 @@ struct MapInfoView: View {
 
 struct MapContainerView: UIViewRepresentable {
     @State private var workouts: [HKWorkout] = []
-    @State private var selectedPolyline: MKPolyline?
+    @State private var selectedPolyline: WorkoutStoreMKPolyline?
     
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView(frame: .zero)
@@ -173,7 +194,7 @@ struct MapContainerView: UIViewRepresentable {
                     for workoutRoute in workoutRoutes {
                         let locationData = await getLocationDataForRoute(givenRoute: workoutRoute)
                         let coordinates = locationData.map { $0.coordinate }
-                        let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
+                        let polyline = WorkoutStoreMKPolyline(coordinates: coordinates, count: coordinates.count, workout: workout)
                         DispatchQueue.main.async {
                             mapView.addOverlay(polyline)
                         }
@@ -195,10 +216,10 @@ struct MapContainerView: UIViewRepresentable {
         }
         
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if overlay is MKPolyline {
+            if overlay is WorkoutStoreMKPolyline {
                 let renderer = MKPolylineRenderer(overlay: overlay)
                 
-                if let tappedPolyline = overlay as? MKPolyline, let selectedPolyline = parent.selectedPolyline {
+                if let tappedPolyline = overlay as? WorkoutStoreMKPolyline, let selectedPolyline = parent.selectedPolyline {
                     // Change color for the tapped polyline
                     renderer.strokeColor = tappedPolyline.isEqual(selectedPolyline) ? UIColor.orange : UIColor.red
                 } else {
@@ -216,13 +237,14 @@ struct MapContainerView: UIViewRepresentable {
             let touchPoint = gestureRecognizer.location(in: mapView)
             let coordinates = mapView.convert(touchPoint, toCoordinateFrom: mapView)
             
-            var newSelectedPolyline: MKPolyline?
+            var newSelectedPolyline: WorkoutStoreMKPolyline?
             
             // Find the polyline that was tapped
             for overlay in mapView.overlays {
-                if let polyline = overlay as? MKPolyline {
+                if let polyline = overlay as? WorkoutStoreMKPolyline {
                     if isCoordinateOnPolyline(coordinates, polyline: polyline) {
                         newSelectedPolyline = polyline
+                        print(newSelectedPolyline?.workout)
                         break
                     }
                 }
@@ -246,7 +268,7 @@ struct MapContainerView: UIViewRepresentable {
         }
         
         
-        func isCoordinateOnPolyline(_ coordinate: CLLocationCoordinate2D, polyline: MKPolyline) -> Bool {
+        func isCoordinateOnPolyline(_ coordinate: CLLocationCoordinate2D, polyline: WorkoutStoreMKPolyline) -> Bool {
             let tolerance: CLLocationDistance = 4 // Tolerance in meters
             
             for i in 0 ..< polyline.pointCount - 1 {
