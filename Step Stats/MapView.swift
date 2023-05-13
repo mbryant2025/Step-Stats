@@ -5,25 +5,117 @@ import MapKit
 let store = HKHealthStore()
 
 struct MapView: View {
-    
     @State private var showInfo = false
+    @State private var showPanel = false
+    @State private var selectedPolyline: MKPolyline?
     
     var body: some View {
-        MapContainerView()
-            .navigationTitle("Workout Mapper")
-            .navigationBarItems(trailing:
-                                    Button(action: {
-                showInfo = true
-            }) {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 18))
+        ZStack {
+            MapContainerView()
+                .ignoresSafeArea()
+            
+            VStack {
+                Spacer()
+                
+                Button(action: {
+                    showPanel = true
+                }) {
+                    Text("Workout Info")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                }
+                .padding(.bottom, 16)
             }
-            )
-            .sheet(isPresented: $showInfo) {
-                MapInfoView(showInfo: $showInfo)
+        }
+        .navigationBarItems(trailing:
+            VStack {
+                HStack {
+                    Button(action: {
+                        showInfo = true
+                    }) {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 18))
+                            .padding(8)
+                    }
+                    .padding(3)
+                }
             }
+        )
+        .overlay(
+            Color(UIColor.systemBackground).opacity(0.8)
+                .frame(maxWidth: .infinity, maxHeight: 100)
+                .edgesIgnoringSafeArea(.top)
+                .position(CGPoint(x: UIScreen.main.bounds.width / 2, y: 0))
+        )
+        .sheet(isPresented: $showInfo) {
+            MapInfoView(showInfo: $showInfo)
+        }
+        .sheet(isPresented: $showPanel) {
+            SlideUpPanelView(showPanel: $showPanel, selectedPolyline: $selectedPolyline)
+        }
     }
 }
+
+
+
+struct SlideUpPanelView: View {
+    @Binding var showPanel: Bool
+    @Binding var selectedPolyline: MKPolyline?
+    
+    private let panelHeight: CGFloat = 300
+    private let handleHeight: CGFloat = 30
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            arrowIndicator
+            content
+        }
+    }
+    
+    var arrowIndicator: some View {
+        VStack(spacing: 0) {
+            
+            RoundedRectangle(cornerRadius: 3)
+                .frame(width: 40, height: 6)
+                .foregroundColor(.gray)
+                .padding(.vertical, 4)
+        }
+        .frame(height: handleHeight)
+        .background(Color.clear)
+    }
+    
+    var content: some View {
+        VStack {
+            Text("Panel Content")
+                .font(.headline)
+                .padding()
+            
+            Spacer()
+            
+            Button(action: {
+                showPanel = false
+                selectedPolyline = nil
+            }) {
+                Text("Dismiss")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.red)
+                    .cornerRadius(10)
+            }
+            .padding(.bottom, 16)
+        }
+        .padding(.horizontal)
+        .frame(maxWidth: .infinity, maxHeight: .infinity) // Fill the available space
+    }
+
+}
+
+
+
 
 struct MapInfoView: View {
     @Binding var showInfo: Bool
