@@ -18,10 +18,11 @@ struct MapView: View {
     @State private var showInfo = false
     @State private var showPanel = false
     @State private var selectedWorkoutPolyline: WorkoutStoreMKPolyline?
+    @State private var mapType: MKMapType = .standard
     
     var body: some View {
         ZStack {
-            MapContainerView(selectedPolyline: $selectedWorkoutPolyline)
+            MapContainerView(selectedPolyline: $selectedWorkoutPolyline, mapType: $mapType)
                 .ignoresSafeArea()
             
             VStack {
@@ -51,6 +52,7 @@ struct MapView: View {
                             .padding(8)
                     }
                     .padding(3)
+                    
                 }
             }
         )
@@ -61,7 +63,7 @@ struct MapView: View {
                 .position(CGPoint(x: UIScreen.main.bounds.width / 2, y: 0))
         )
         .sheet(isPresented: $showInfo) {
-            MapInfoView(showInfo: $showInfo)
+            MapInfoView(showInfo: $showInfo, mapType: $mapType)
         }
         .sheet(isPresented: $showPanel) {
             SlideUpPanelView(showPanel: $showPanel, selectedPolyline: $selectedWorkoutPolyline)
@@ -99,7 +101,6 @@ struct SlideUpPanelView: View {
     
     var content: some View {
         VStack {
-
             if let selectedPolyline = selectedPolyline {
                 if let workout = selectedPolyline.workout {
                     Text(workout.description)
@@ -111,8 +112,20 @@ struct SlideUpPanelView: View {
             Spacer()
             
             Button(action: {
+                openWorkoutInFitnessApp()
                 showPanel = false
-                selectedPolyline = nil
+            }) {
+                Text("Open in Fitness App")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color("ButtonColor1"))
+                    .cornerRadius(10)
+            }
+            .padding(.bottom, 16)
+            
+            Button(action: {
+                showPanel = false
             }) {
                 Text("Dismiss")
                     .font(.headline)
@@ -127,49 +140,110 @@ struct SlideUpPanelView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    public func getSelectedWorkout() -> HKWorkout {
-        (selectedPolyline?.workout)!
+
+    func openWorkoutInFitnessApp() {
+        guard let workout = selectedPolyline?.workout else {
+            print("No selected workout available.")
+            return
+        }
+
+        // Check if the Fitness app is installed
+        guard let fitnessAppURL = URL(string: UIApplication.openSettingsURLString) else {
+            print("Fitness app not installed.")
+            return
+        }
+
+        // Check if the workout is saved to the HealthKit store
+        guard let workoutUUIDString = Optional(workout.uuid.uuidString) else {
+            print("Workout UUID is not available.")
+            return
+        }
+
+        // Create the URL for opening the workout in the Fitness app
+        let workoutURLString = "your-custom-scheme://workout/\(workoutUUIDString)"
+
+        // Create the URL from the workout URL string
+        guard let workoutURL = URL(string: workoutURLString) else {
+            print("Failed to create workout URL.")
+            return
+        }
+
+        // Open the workout in the Fitness app
+        UIApplication.shared.open(workoutURL) { success in
+            if success {
+                print("Workout opened in Fitness app.")
+            } else {
+                print("Failed to open workout in Fitness app.")
+            }
+        }
     }
+
+
+
+
+
+
+
+
+
+
 }
+
 
 
 struct MapInfoView: View {
     @Binding var showInfo: Bool
+    @Binding var mapType: MKMapType
     
     var body: some View {
         NavigationView {
             Form {
                 Text("TEST")
+                Picker("", selection: $mapType) {
+                                        Text("Standard").tag(MKMapType.standard)
+                                        Text("Satellite").tag(MKMapType.satellite)
+                                        Text("Hybrid").tag(MKMapType.hybrid)
+                                        Text("Muted").tag(MKMapType.mutedStandard)
+                                    }
+                                    .pickerStyle(SegmentedPickerStyle())
+//                                    .frame(width: 150)
             }
             .navigationTitle("Mapper Info")
             .navigationBarItems(trailing: Button("Done") {
                 showInfo = false
             })
+            
         }
     }
 }
 
 struct MapContainerView: UIViewRepresentable {
     @Binding var selectedPolyline: WorkoutStoreMKPolyline?
+    @Binding var mapType: MKMapType
     
     @State private var workouts: [HKWorkout] = []
     
     func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView(frame: .zero)
-        mapView.delegate = context.coordinator
-        let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePolylineTap(_:)))
-        mapView.addGestureRecognizer(tapGesture)
-        return mapView
-    }
+            let mapView = MKMapView(frame: .zero)
+            mapView.delegate = context.coordinator
+            mapView.mapType = mapType
+            let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePolylineTap(_:)))
+            mapView.addGestureRecognizer(tapGesture)
+            return mapView
+        }
     
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
-        if workouts.isEmpty {
-            fetchWorkouts()
-        } else {
-            plotWorkouts(on: uiView)
+            if uiView.mapType != mapType {
+                uiView.mapType = mapType
+            }
+            
+            if workouts.isEmpty {
+                fetchWorkouts()
+            } else {
+                plotWorkouts(on: uiView)
+            }
         }
-    }
     
     func fetchWorkouts() {
         requestAuthorization()
