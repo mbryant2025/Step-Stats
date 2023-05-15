@@ -177,16 +177,6 @@ struct SlideUpPanelView: View {
             }
         }
     }
-
-
-
-
-
-
-
-
-
-
 }
 
 
@@ -222,6 +212,7 @@ struct MapContainerView: UIViewRepresentable {
     @Binding var mapType: MKMapType
     
     @State private var workouts: [HKWorkout] = []
+    @State private var polylines: [WorkoutStoreMKPolyline] = []
     
     func makeUIView(context: Context) -> MKMapView {
             let mapView = MKMapView(frame: .zero)
@@ -234,16 +225,20 @@ struct MapContainerView: UIViewRepresentable {
     
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
-            if uiView.mapType != mapType {
-                uiView.mapType = mapType
-            }
+        if uiView.mapType != mapType {
+            uiView.mapType = mapType
             
-            if workouts.isEmpty {
-                fetchWorkouts()
-            } else {
-                plotWorkouts(on: uiView)
-            }
+            // Remove all existing polylines when changing the map type
+            uiView.removeOverlays(uiView.overlays)
         }
+        
+        if workouts.isEmpty {
+            fetchWorkouts()
+        } else {
+            plotWorkouts(on: uiView)
+        }
+    }
+
     
     func fetchWorkouts() {
         requestAuthorization()
@@ -258,6 +253,9 @@ struct MapContainerView: UIViewRepresentable {
     
     
     func plotWorkouts(on mapView: MKMapView) {
+        // Remove all existing polylines before adding new ones
+        mapView.removeOverlays(mapView.overlays)
+        
         for workout in workouts {
             Task {
                 if let workoutRoutes = await getWorkoutRoute(workout: workout) {
@@ -265,14 +263,16 @@ struct MapContainerView: UIViewRepresentable {
                         let locationData = await getLocationDataForRoute(givenRoute: workoutRoute)
                         let coordinates = locationData.map { $0.coordinate }
                         let polyline = WorkoutStoreMKPolyline(coordinates: coordinates, count: coordinates.count, workout: workout)
-                        DispatchQueue.main.async {
-                            mapView.addOverlay(polyline)
-                        }
+                        await mapView.addOverlay(polyline)
+                        
+                        // Append the polyline to the polylines array
+                        polylines.append(polyline)
                     }
                 }
             }
         }
     }
+
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -299,8 +299,10 @@ struct MapContainerView: UIViewRepresentable {
                 renderer.lineWidth = 6
                 return renderer
             }
-            return MKOverlayRenderer()
+            
+            return MKOverlayRenderer(overlay: overlay)
         }
+
         
         @objc func handlePolylineTap(_ gestureRecognizer: UITapGestureRecognizer) {
             let mapView = gestureRecognizer.view as! MKMapView
