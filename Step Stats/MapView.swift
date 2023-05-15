@@ -112,7 +112,6 @@ struct SlideUpPanelView: View {
             Spacer()
             
             Button(action: {
-                openWorkoutInFitnessApp()
                 showPanel = false
             }) {
                 Text("Open in Fitness App")
@@ -139,44 +138,7 @@ struct SlideUpPanelView: View {
         .padding(.horizontal)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
 
-    func openWorkoutInFitnessApp() {
-        guard let workout = selectedPolyline?.workout else {
-            print("No selected workout available.")
-            return
-        }
-
-        // Check if the Fitness app is installed
-        guard let fitnessAppURL = URL(string: UIApplication.openSettingsURLString) else {
-            print("Fitness app not installed.")
-            return
-        }
-
-        // Check if the workout is saved to the HealthKit store
-        guard let workoutUUIDString = Optional(workout.uuid.uuidString) else {
-            print("Workout UUID is not available.")
-            return
-        }
-
-        // Create the URL for opening the workout in the Fitness app
-        let workoutURLString = "your-custom-scheme://workout/\(workoutUUIDString)"
-
-        // Create the URL from the workout URL string
-        guard let workoutURL = URL(string: workoutURLString) else {
-            print("Failed to create workout URL.")
-            return
-        }
-
-        // Open the workout in the Fitness app
-        UIApplication.shared.open(workoutURL) { success in
-            if success {
-                print("Workout opened in Fitness app.")
-            } else {
-                print("Failed to open workout in Fitness app.")
-            }
-        }
-    }
 }
 
 
@@ -226,18 +188,44 @@ struct MapContainerView: UIViewRepresentable {
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
         if uiView.mapType != mapType {
-            uiView.mapType = mapType
-            
-            // Remove all existing polylines when changing the map type
+            // Remove all existing polylines
             uiView.removeOverlays(uiView.overlays)
+            
+            // Update the map type
+            uiView.mapType = mapType
         }
-        
+            
+        // Plot workouts if there are new workouts
         if workouts.isEmpty {
             fetchWorkouts()
         } else {
-            plotWorkouts(on: uiView)
+            plotWorkouts(on: uiView, existingPolylineSet: Set(polylines))
+        }
+        
+    }
+
+
+
+    func plotWorkouts(on mapView: MKMapView, existingPolylineSet: Set<WorkoutStoreMKPolyline>) {
+        for workout in workouts {
+            Task {
+                if let workoutRoutes = await getWorkoutRoute(workout: workout) {
+                    for workoutRoute in workoutRoutes {
+                        let locationData = await getLocationDataForRoute(givenRoute: workoutRoute)
+                        let coordinates = locationData.map { $0.coordinate }
+                        let polyline = WorkoutStoreMKPolyline(coordinates: coordinates, count: coordinates.count, workout: workout)
+                        
+                        // Add the polyline only if it's not already in the set
+                        if !existingPolylineSet.contains(polyline) {
+                            await mapView.addOverlay(polyline)
+                            polylines.append(polyline)
+                        }
+                    }
+                }
+            }
         }
     }
+
 
     
     func fetchWorkouts() {
@@ -250,29 +238,6 @@ struct MapContainerView: UIViewRepresentable {
             }
         }
     }
-    
-    
-    func plotWorkouts(on mapView: MKMapView) {
-        // Remove all existing polylines before adding new ones
-        mapView.removeOverlays(mapView.overlays)
-        
-        for workout in workouts {
-            Task {
-                if let workoutRoutes = await getWorkoutRoute(workout: workout) {
-                    for workoutRoute in workoutRoutes {
-                        let locationData = await getLocationDataForRoute(givenRoute: workoutRoute)
-                        let coordinates = locationData.map { $0.coordinate }
-                        let polyline = WorkoutStoreMKPolyline(coordinates: coordinates, count: coordinates.count, workout: workout)
-                        await mapView.addOverlay(polyline)
-                        
-                        // Append the polyline to the polylines array
-                        polylines.append(polyline)
-                    }
-                }
-            }
-        }
-    }
-
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
