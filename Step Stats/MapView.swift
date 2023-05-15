@@ -226,10 +226,10 @@ struct MapContainerView: UIViewRepresentable {
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
         if uiView.mapType != mapType {
-            uiView.mapType = mapType
-            
-            // Remove all existing polylines when changing the map type
-            uiView.removeOverlays(uiView.overlays)
+//            uiView.mapType = mapType
+//
+//            // Remove all existing polylines when changing the map type
+//            uiView.removeOverlays(uiView.overlays)
         }
         
         if workouts.isEmpty {
@@ -256,7 +256,11 @@ struct MapContainerView: UIViewRepresentable {
         // Remove all existing polylines before adding new ones
         mapView.removeOverlays(mapView.overlays)
         
+        let dispatchGroup = DispatchGroup()
+        
         for workout in workouts {
+            dispatchGroup.enter()
+            
             Task {
                 if let workoutRoutes = await getWorkoutRoute(workout: workout) {
                     for workoutRoute in workoutRoutes {
@@ -269,9 +273,42 @@ struct MapContainerView: UIViewRepresentable {
                         polylines.append(polyline)
                     }
                 }
+                
+                dispatchGroup.leave()
             }
         }
+        
+        dispatchGroup.notify(queue: .main) {
+            zoomToWorkoutPolylines(mapView: mapView)
+        }
     }
+
+
+    func zoomToLastWorkoutPolyline(mapView: MKMapView) {
+        guard let lastWorkout = workouts.max(by: { $0.startDate < $1.startDate }),
+              let lastPolyline = polylines.first(where: { $0.workout == lastWorkout }) else {
+            return
+        }
+        
+        mapView.setVisibleMapRect(lastPolyline.boundingMapRect, animated: true)
+    }
+    
+    func zoomToWorkoutPolylines(mapView: MKMapView) {
+        var boundingRect: MKMapRect?
+        
+        for polyline in polylines {
+            if boundingRect == nil {
+                boundingRect = polyline.boundingMapRect
+            } else {
+                boundingRect = boundingRect!.union(polyline.boundingMapRect)
+            }
+        }
+        
+        if let rect = boundingRect {
+            mapView.setVisibleMapRect(rect, edgePadding: UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20), animated: true)
+        }
+    }
+
 
     
     func makeCoordinator() -> Coordinator {
