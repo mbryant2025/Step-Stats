@@ -1,6 +1,7 @@
 import HealthKit
 import SwiftUI
 import MapKit
+import Atomics
 
 let store = HKHealthStore()
 
@@ -19,10 +20,11 @@ struct MapView: View {
     @State private var showPanel = false
     @State private var selectedWorkoutPolyline: WorkoutStoreMKPolyline?
     @State private var mapType: MKMapType = .standard
+    @State private var polylines: [WorkoutStoreMKPolyline] = []
     
     var body: some View {
         ZStack {
-            MapContainerView(selectedPolyline: $selectedWorkoutPolyline, mapType: $mapType)
+            MapContainerView(selectedPolyline: $selectedWorkoutPolyline, mapType: $mapType, polylines: $polylines)
                 .ignoresSafeArea()
             
             VStack {
@@ -63,7 +65,12 @@ struct MapView: View {
                 .position(CGPoint(x: UIScreen.main.bounds.width / 2, y: 0))
         )
         .sheet(isPresented: $showInfo) {
-            MapInfoView(showInfo: $showInfo, mapType: $mapType)
+            MapInfoView(
+                   showInfo: $showInfo,
+                   mapType: $mapType,
+                   polylines: $polylines,
+                   selectedPolyline: $selectedWorkoutPolyline
+               )
         }
         .sheet(isPresented: $showPanel) {
             SlideUpPanelView(showPanel: $showPanel, selectedPolyline: $selectedWorkoutPolyline)
@@ -110,20 +117,7 @@ struct SlideUpPanelView: View {
             }
             
             Spacer()
-            
-            Button(action: {
-                openWorkoutInFitnessApp()
-                showPanel = false
-            }) {
-                Text("Open in Fitness App")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .background(Color("ButtonColor1"))
-                    .cornerRadius(10)
-            }
-            .padding(.bottom, 16)
-            
+
             Button(action: {
                 showPanel = false
             }) {
@@ -139,104 +133,161 @@ struct SlideUpPanelView: View {
         .padding(.horizontal)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
-
-    func openWorkoutInFitnessApp() {
-        guard let workout = selectedPolyline?.workout else {
-            print("No selected workout available.")
-            return
-        }
-
-        // Check if the Fitness app is installed
-        guard let fitnessAppURL = URL(string: UIApplication.openSettingsURLString) else {
-            print("Fitness app not installed.")
-            return
-        }
-
-        // Check if the workout is saved to the HealthKit store
-        guard let workoutUUIDString = Optional(workout.uuid.uuidString) else {
-            print("Workout UUID is not available.")
-            return
-        }
-
-        // Create the URL for opening the workout in the Fitness app
-        let workoutURLString = "your-custom-scheme://workout/\(workoutUUIDString)"
-
-        // Create the URL from the workout URL string
-        guard let workoutURL = URL(string: workoutURLString) else {
-            print("Failed to create workout URL.")
-            return
-        }
-
-        // Open the workout in the Fitness app
-        UIApplication.shared.open(workoutURL) { success in
-            if success {
-                print("Workout opened in Fitness app.")
-            } else {
-                print("Failed to open workout in Fitness app.")
-            }
-        }
-    }
 }
-
-
 
 struct MapInfoView: View {
     @Binding var showInfo: Bool
     @Binding var mapType: MKMapType
+    @Binding var polylines: [WorkoutStoreMKPolyline]
+    @Binding var selectedPolyline: WorkoutStoreMKPolyline?
+    
+    @State private var sortAscending = false
+    @State private var sortCriteria = SortCriteria.date
+    
+    private func formatDate(_ date: Date) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "M/d/yy"
+        
+        return dateFormatter.string(from: date)
+    }
+    
+    enum SortCriteria {
+        case date
+        case distance
+    }
+    
+    let additionalText = "Additional Text"
+    
+    var sortedPolylines: [WorkoutStoreMKPolyline] {
+        switch sortCriteria {
+        case .date:
+            if sortAscending {
+                return polylines.sorted { $0.workout?.startDate ?? Date() < $1.workout?.startDate ?? Date() }
+            } else {
+                return polylines.sorted { $0.workout?.startDate ?? Date() > $1.workout?.startDate ?? Date() }
+            }
+        case .distance:
+            if sortAscending {
+                return polylines.sorted { $0.workout?.totalDistance?.doubleValue(for: HKUnit.meter()) ?? 0 < $1.workout?.totalDistance?.doubleValue(for: HKUnit.meter()) ?? 0 }
+            } else {
+                return polylines.sorted { $0.workout?.totalDistance?.doubleValue(for: HKUnit.meter()) ?? 0 > $1.workout?.totalDistance?.doubleValue(for: HKUnit.meter()) ?? 0 }
+            }
+        }
+    }
+    
+    
     
     var body: some View {
         NavigationView {
             Form {
-                Text("TEST")
-                Picker("", selection: $mapType) {
-                                        Text("Standard").tag(MKMapType.standard)
-                                        Text("Satellite").tag(MKMapType.satellite)
-                                        Text("Hybrid").tag(MKMapType.hybrid)
-                                        Text("Muted").tag(MKMapType.mutedStandard)
+                Section(header: Text("Map Type")) {
+                    Picker("", selection: $mapType) {
+                        Text("Standard").tag(MKMapType.standard)
+                        Text("Satellite").tag(MKMapType.satellite)
+                        Text("Hybrid").tag(MKMapType.hybrid)
+                        Text("Muted").tag(MKMapType.mutedStandard)
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+                
+                Section(header: Text("Workouts")) {
+                    HStack {
+                        Text("Sort by:")
+                        Picker("", selection: $sortCriteria) {
+                            Text("Date").tag(SortCriteria.date)
+                            Text("Distance").tag(SortCriteria.distance)
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                    }
+                    
+                    HStack {
+                        Text("Sort order:")
+                        Picker("", selection: $sortAscending) {
+                            Text("Ascending").tag(true)
+                            Text("Descending").tag(false)
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                    }
+                    
+                    List(sortedPolylines, id: \.self) { polyline in
+                        if let workout = polyline.workout {
+                            Button(action: {
+                                showInfo = false
+                                selectedPolyline = polyline
+                            }) {
+                                HStack {
+                                    Text(formatDate(workout.startDate) + " " + getWorkoutType(for: workout)) // Display workout info as primary text
+                                    Spacer()
+                                    if let distance = workout.totalDistance?.doubleValue(for: HKUnit.meter()) {
+                                        if UnitManager.shared.unitType == .mi {
+                                            Text("\(distance * meterToMiles, specifier: "%.2f") mi")
+                                                .foregroundColor(.gray)
+                                        } else {
+                                            Text("\(distance * meterToKm, specifier: "%.2f") km")
+                                                .foregroundColor(.gray)
+                                        }
+                                    } else {
+                                        Text("Distance unavailable")
+                                            .foregroundColor(.gray)
                                     }
-                                    .pickerStyle(SegmentedPickerStyle())
-//                                    .frame(width: 150)
+                                }
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle("Mapper Info")
             .navigationBarItems(trailing: Button("Done") {
                 showInfo = false
             })
-            
         }
     }
+
+    
 }
+
 
 struct MapContainerView: UIViewRepresentable {
     @Binding var selectedPolyline: WorkoutStoreMKPolyline?
     @Binding var mapType: MKMapType
+    @Binding var polylines: [WorkoutStoreMKPolyline]
     
     @State private var workouts: [HKWorkout] = []
-    @State private var polylines: [WorkoutStoreMKPolyline] = []
+    
+    //To prevent re-zooming after selecting an individual polyline
+    private let shouldZoomToPolylines = ManagedAtomic<Bool>(true)
+    
     
     func makeUIView(context: Context) -> MKMapView {
-            let mapView = MKMapView(frame: .zero)
-            mapView.delegate = context.coordinator
-            mapView.mapType = mapType
-            let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePolylineTap(_:)))
-            mapView.addGestureRecognizer(tapGesture)
-            return mapView
-        }
+        let mapView = MKMapView(frame: .zero)
+        mapView.delegate = context.coordinator
+        mapView.mapType = mapType
+        let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePolylineTap(_:)))
+        mapView.addGestureRecognizer(tapGesture)
+        return mapView
+    }
     
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
+        print("calling update")
         if uiView.mapType != mapType {
 //            uiView.mapType = mapType
 //
 //            // Remove all existing polylines when changing the map type
 //            uiView.removeOverlays(uiView.overlays)
         }
+
+        
+        
         
         if workouts.isEmpty {
             fetchWorkouts()
-        } else {
-            plotWorkouts(on: uiView)
+            return
         }
+        
+        plotWorkouts(on: uiView)
+
+        
     }
 
     
@@ -257,6 +308,7 @@ struct MapContainerView: UIViewRepresentable {
         mapView.removeOverlays(mapView.overlays)
         
         let dispatchGroup = DispatchGroup()
+        var shouldZoomToPolylines = true // Flag to determine whether to zoom to all polylines
         
         for workout in workouts {
             dispatchGroup.enter()
@@ -276,24 +328,30 @@ struct MapContainerView: UIViewRepresentable {
                 
                 dispatchGroup.leave()
             }
+            
         }
-        
-        dispatchGroup.notify(queue: .main) {
-            zoomToWorkoutPolylines(mapView: mapView)
+        if self.shouldZoomToPolylines.load(ordering: .relaxed) {
+            dispatchGroup.notify(queue: .main) {
+                zoomToWorkoutPolylines(mapView: mapView)
+            }
+            self.shouldZoomToPolylines.store(false, ordering: .relaxed)
         }
     }
 
-
-    func zoomToLastWorkoutPolyline(mapView: MKMapView) {
-        guard let lastWorkout = workouts.max(by: { $0.startDate < $1.startDate }),
-              let lastPolyline = polylines.first(where: { $0.workout == lastWorkout }) else {
+    
+    func zoomToWorkoutPolyline(mapView: MKMapView, workout: WorkoutStoreMKPolyline?) {
+        guard let workout = workout else {
+            print("Workout does not exist, cannot zoom")
             return
         }
-        
-        mapView.setVisibleMapRect(lastPolyline.boundingMapRect, animated: true)
+
+        mapView.setVisibleMapRect(workout.boundingMapRect, edgePadding: UIEdgeInsets(top: 20, left: 20, bottom: 40, right: 20), animated: true)
     }
+
+
     
     func zoomToWorkoutPolylines(mapView: MKMapView) {
+        print("Zooming to all")
         var boundingRect: MKMapRect?
         
         for polyline in polylines {
@@ -308,8 +366,6 @@ struct MapContainerView: UIViewRepresentable {
             mapView.setVisibleMapRect(rect, edgePadding: UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20), animated: true)
         }
     }
-
-
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -372,6 +428,8 @@ struct MapContainerView: UIViewRepresentable {
                 if let renderer = mapView.renderer(for: newPolyline) as? MKPolylineRenderer {
                     renderer.strokeColor = UIColor(Color("RouteSelected"))
                 }
+                
+                parent.zoomToWorkoutPolyline(mapView: mapView, workout: newSelectedPolyline)
             }
         }
         

@@ -19,6 +19,7 @@
 		E16455D32A0AD77900E87DAF /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455D22A0AD77900E87DAF /* MapView.swift */; };
 		E16455F12A0B0DEF00E87DAF /* RecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16455F02A0B0DEF00E87DAF /* RecordsView.swift */; };
 		E173B70D2A0D92EA00C41792 /* QuantityStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E173B70C2A0D92EA00C41792 /* QuantityStatsView.swift */; };
+		E173B7152A1322AC00C41792 /* Atomics in Frameworks */ = {isa = PBXBuildFile; productRef = E173B7142A1322AC00C41792 /* Atomics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +44,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E173B7152A1322AC00C41792 /* Atomics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -141,6 +143,9 @@
 			dependencies = (
 			);
 			name = "Step Stats";
+			packageProductDependencies = (
+				E173B7142A1322AC00C41792 /* Atomics */,
+			);
 			productName = "Step Stats";
 			productReference = E16455AE2A09D64F00E87DAF /* Step Stats.app */;
 			productType = "com.apple.product-type.application";
@@ -169,6 +174,9 @@
 				Base,
 			);
 			mainGroup = E16455A52A09D64F00E87DAF;
+			packageReferences = (
+				E173B7132A1322AC00C41792 /* XCRemoteSwiftPackageReference "swift-atomics" */,
+			);
 			productRefGroup = E16455AF2A09D64F00E87DAF /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -413,6 +421,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E173B7132A1322AC00C41792 /* XCRemoteSwiftPackageReference "swift-atomics" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-atomics.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E173B7142A1322AC00C41792 /* Atomics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E173B7132A1322AC00C41792 /* XCRemoteSwiftPackageReference "swift-atomics" */;
+			productName = Atomics;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E16455A62A09D64F00E87DAF /* Project object */;
 }
