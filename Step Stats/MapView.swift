@@ -21,6 +21,8 @@ struct MapView: View {
     @State private var selectedWorkoutPolyline: WorkoutStoreMKPolyline?
     @State private var mapType: MKMapType = .standard
     @State private var polylines: [WorkoutStoreMKPolyline] = []
+    @State private var sortAscending = false
+    @State private var sortCriteria = SortCriteria.date
     
     var body: some View {
         ZStack {
@@ -69,7 +71,9 @@ struct MapView: View {
                    showInfo: $showInfo,
                    mapType: $mapType,
                    polylines: $polylines,
-                   selectedPolyline: $selectedWorkoutPolyline
+                   selectedPolyline: $selectedWorkoutPolyline,
+                   sortAscending: $sortAscending,
+                   sortCriteria: $sortCriteria
                )
         }
         .sheet(isPresented: $showPanel) {
@@ -135,14 +139,19 @@ struct SlideUpPanelView: View {
     }
 }
 
+enum SortCriteria {
+    case date
+    case distance
+}
+
 struct MapInfoView: View {
     @Binding var showInfo: Bool
     @Binding var mapType: MKMapType
     @Binding var polylines: [WorkoutStoreMKPolyline]
     @Binding var selectedPolyline: WorkoutStoreMKPolyline?
+    @Binding var sortAscending: Bool
+    @Binding var sortCriteria: SortCriteria
     
-    @State private var sortAscending = false
-    @State private var sortCriteria = SortCriteria.date
     
     private func formatDate(_ date: Date) -> String {
         let dateFormatter = DateFormatter()
@@ -151,10 +160,7 @@ struct MapInfoView: View {
         return dateFormatter.string(from: date)
     }
     
-    enum SortCriteria {
-        case date
-        case distance
-    }
+    
     
     let additionalText = "Additional Text"
     
@@ -216,7 +222,8 @@ struct MapInfoView: View {
                                 selectedPolyline = polyline
                             }) {
                                 HStack {
-                                    Text(formatDate(workout.startDate) + " " + getWorkoutType(for: workout)) // Display workout info as primary text
+                                    Text(formatDate(workout.startDate) + " " + getWorkoutType(for: workout))
+                                        .foregroundColor(polyline == selectedPolyline ? Color("ButtonColor1") : Color("ButtonColor2")) // Highlight selected workout
                                     Spacer()
                                     if let distance = workout.totalDistance?.doubleValue(for: HKUnit.meter()) {
                                         if UnitManager.shared.unitType == .mi {
@@ -234,6 +241,7 @@ struct MapInfoView: View {
                             }
                         }
                     }
+
                 }
             }
             .navigationTitle("Mapper Info")
