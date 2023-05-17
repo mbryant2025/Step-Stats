@@ -152,7 +152,6 @@ struct MapInfoView: View {
     @Binding var sortAscending: Bool
     @Binding var sortCriteria: SortCriteria
     
-    
     private func formatDate(_ date: Date) -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "M/d/yy"
@@ -254,13 +253,13 @@ struct MapInfoView: View {
     
 }
 
-
 struct MapContainerView: UIViewRepresentable {
     @Binding var selectedPolyline: WorkoutStoreMKPolyline?
     @Binding var mapType: MKMapType
     @Binding var polylines: [WorkoutStoreMKPolyline]
     
     @State private var workouts: [HKWorkout] = []
+    @State private var hasDrawnPolylines = false
     
     //To prevent re-zooming after selecting an individual polyline
     private let shouldZoomToPolylines = ManagedAtomic<Bool>(true)
@@ -272,34 +271,69 @@ struct MapContainerView: UIViewRepresentable {
         mapView.mapType = mapType
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePolylineTap(_:)))
         mapView.addGestureRecognizer(tapGesture)
+        
+        print(workouts.count)
         return mapView
     }
     
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
         print("calling update")
-        if uiView.mapType != mapType {
+//        if uiView.mapType != mapType {
 //            uiView.mapType = mapType
 //
 //            // Remove all existing polylines when changing the map type
 //            uiView.removeOverlays(uiView.overlays)
-        }
-
-        
-        
-        
+//        }
+//
+//
+//
+//
         if workouts.isEmpty {
             fetchWorkouts()
             return
         }
         
-        plotWorkouts(on: uiView)
+        if !hasDrawnPolylines {
+            print("drawing lines here")
+            plotWorkouts(on: uiView)
+            setHasDrawnPolylines()
+        }
+        
+        // Set all polylines to default color
+        for polyline in polylines {
+            if let renderer = uiView.renderer(for: polyline) as? MKPolylineRenderer {
+                renderer.strokeColor = UIColor(Color("Route"))
+            }
+        }
+       
+        
+        // Set selected line highlight
+        if let selectedPolyline = selectedPolyline {
+            if let renderer = uiView.renderer(for: selectedPolyline) as? MKPolylineRenderer {
+                    renderer.strokeColor = UIColor.red
+                }
+        }
+        
+        // Zoom to selected polyline if it exists
+        if let selectedPolyline = selectedPolyline {
+            zoomToWorkoutPolyline(mapView: uiView, workout: selectedPolyline)
+        }
+        
+        
+        
 
         
     }
-
+    
+    private func setHasDrawnPolylines() {
+        DispatchQueue.main.async {
+            hasDrawnPolylines = true
+        }
+    }
     
     func fetchWorkouts() {
+        print("fetching workouts")
         requestAuthorization()
         Task {
             readWorkouts { fetchedWorkouts in
@@ -315,8 +349,9 @@ struct MapContainerView: UIViewRepresentable {
         // Remove all existing polylines before adding new ones
         mapView.removeOverlays(mapView.overlays)
         
+        
+        
         let dispatchGroup = DispatchGroup()
-        var shouldZoomToPolylines = true // Flag to determine whether to zoom to all polylines
         
         for workout in workouts {
             dispatchGroup.enter()
