@@ -77,7 +77,7 @@ struct MapView: View {
                )
         }
         .sheet(isPresented: $showPanel) {
-            SlideUpPanelView(showPanel: $showPanel, selectedPolyline: $selectedWorkoutPolyline)
+            SlideUpPanelView(showPanel: $showPanel, selectedPolyline: $selectedWorkoutPolyline, showInfo: $showInfo)
         }
     }
 }
@@ -86,6 +86,7 @@ struct MapView: View {
 struct SlideUpPanelView: View {
     @Binding var showPanel: Bool
     @Binding var selectedPolyline: WorkoutStoreMKPolyline?
+    @Binding var showInfo: Bool
     
     private let panelHeight: CGFloat = 300
     private let handleHeight: CGFloat = 30
@@ -118,6 +119,41 @@ struct SlideUpPanelView: View {
                         .font(.headline)
                         .padding()
                 }
+            }
+            else {
+
+                Text("Select a workout by tapping its route on the map or find it in the table under the info pane: ")
+                    .font(.headline)
+                    .padding()
+                
+                Button(action: {
+                    showPanel = false
+                    //Small delay to allow for animation of sheets
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        showInfo = true
+                    }
+                }) {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 22))
+                        .foregroundColor(Color("AccentColor"))
+                }
+                .padding(.bottom, 16)
+                
+                Text("The selected route is highlighted in ")
+                    .font(.headline) +
+                    Text("blue")
+                    .font(.headline)
+                    .foregroundColor(Color("RouteSelected")) +
+                    Text(", all others are shown in ")
+                    .font(.headline) +
+                    Text("purple")
+                    .font(.headline)
+                    .foregroundColor(Color("Route")) +
+                    Text(".")
+                    .font(.headline)
+                
+
+
             }
             
             Spacer()
@@ -218,7 +254,11 @@ struct MapInfoView: View {
                         if let workout = polyline.workout {
                             Button(action: {
                                 showInfo = false
-                                selectedPolyline = polyline
+                                selectedPolyline = nil
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                    selectedPolyline = polyline
+                                }
+                                print("New workout selected in info panel")
                             }) {
                                 HStack {
                                     Text(formatDate(workout.startDate) + " " + getWorkoutType(for: workout))
@@ -310,9 +350,14 @@ struct MapContainerView: UIViewRepresentable {
         
         // Set selected line highlight
         if let selectedPolyline = selectedPolyline {
+            
+            //Also remove and re-add it to have it display at the front
+            uiView.removeOverlay(selectedPolyline)
+            uiView.addOverlay(selectedPolyline)
+            
             if let renderer = uiView.renderer(for: selectedPolyline) as? MKPolylineRenderer {
-                    renderer.strokeColor = UIColor.red
-                }
+                    renderer.strokeColor = UIColor(Color("RouteSelected"))
+            }
         }
         
         // Zoom to selected polyline if it exists
