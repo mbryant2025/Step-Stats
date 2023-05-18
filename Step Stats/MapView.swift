@@ -151,9 +151,6 @@ struct SlideUpPanelView: View {
                     .foregroundColor(Color("Route")) +
                     Text(".")
                     .font(.headline)
-                
-
-
             }
             
             Spacer()
@@ -490,20 +487,22 @@ struct MapContainerView: UIViewRepresentable {
             let touchPoint = gestureRecognizer.location(in: mapView)
             let coordinates = mapView.convert(touchPoint, toCoordinateFrom: mapView)
             
-            var newSelectedPolyline: WorkoutStoreMKPolyline?
+            var closestPolyline: WorkoutStoreMKPolyline?
+            var closestDistance: CLLocationDistance = Double.infinity
             
-            // Find the polyline that was tapped
+            // Find the closest polyline that was tapped
             for overlay in mapView.overlays {
                 if let polyline = overlay as? WorkoutStoreMKPolyline {
-                    if isCoordinateOnPolyline(coordinates, polyline: polyline) {
-                        newSelectedPolyline = polyline
-                        break
+                    let distance = distanceToPolyline(coordinates, polyline: polyline)
+                    if distance < closestDistance {
+                        closestDistance = distance
+                        closestPolyline = polyline
                     }
                 }
             }
             
             // Update the color of the selected polyline and bring it to the front
-            if let newPolyline = newSelectedPolyline {
+            if let newPolyline = closestPolyline {
                 if let previousPolyline = parent.selectedPolyline, let renderer = mapView.renderer(for: previousPolyline) as? MKPolylineRenderer {
                     renderer.strokeColor = UIColor(Color("Route"))
                 }
@@ -517,13 +516,15 @@ struct MapContainerView: UIViewRepresentable {
                     renderer.strokeColor = UIColor(Color("RouteSelected"))
                 }
                 
-                parent.zoomToWorkoutPolyline(mapView: mapView, workout: newSelectedPolyline)
+                parent.zoomToWorkoutPolyline(mapView: mapView, workout: closestPolyline)
             }
         }
         
         
-        func isCoordinateOnPolyline(_ coordinate: CLLocationCoordinate2D, polyline: WorkoutStoreMKPolyline) -> Bool {
-            let tolerance: CLLocationDistance = 4 // Tolerance in meters
+        func distanceToPolyline(_ coordinate: CLLocationCoordinate2D, polyline: WorkoutStoreMKPolyline) -> CLLocationDistance {
+            var closestDistance: CLLocationDistance = Double.infinity
+            
+            let tolerance: CLLocationDistance = 15 // Tolerance in meters
             
             for i in 0 ..< polyline.pointCount - 1 {
                 let startMapPoint = polyline.points()[i]
@@ -539,13 +540,15 @@ struct MapContainerView: UIViewRepresentable {
                 let startToTapDistance = CLLocation(latitude: startCoordinate.latitude, longitude: startCoordinate.longitude).distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
                 let endToTapDistance = CLLocation(latitude: endCoordinate.latitude, longitude: endCoordinate.longitude).distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
                 
-                if startToTapDistance + endToTapDistance - polylineDistance < tolerance {
-                    return true
+                let distance = startToTapDistance + endToTapDistance - polylineDistance
+                if distance < closestDistance && distance <= tolerance {
+                    closestDistance = distance
                 }
             }
             
-            return false
+            return closestDistance
         }
+
     }
 }
 
