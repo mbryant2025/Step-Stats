@@ -15,7 +15,6 @@ class WorkoutStoreMKPolyline: MKPolyline {
     }
 }
 
-
 struct MapView: View {
     @State private var showInfo = false
     @State private var showPanel = false
@@ -66,7 +65,6 @@ struct MapView: View {
                         .padding(8)
                 }
                 .padding(3)
-                
             }
         }
         )
@@ -92,7 +90,6 @@ struct MapView: View {
     }
 }
 
-
 struct SlideUpPanelView: View {
     @Binding var showPanel: Bool
     @Binding var selectedPolyline: WorkoutStoreMKPolyline?
@@ -106,7 +103,6 @@ struct SlideUpPanelView: View {
             arrowIndicator
             content
         }
-        
     }
     
     var arrowIndicator: some View {
@@ -131,7 +127,8 @@ struct SlideUpPanelView: View {
                     
                     Button(action: {
                         showPanel = false
-                        // Removing and re-adding the line automatically re zooms
+                        
+                        // Removing and re-adding the line automatically re-zooms
                         let temp = selectedPolyline
                         selectedPolyline = nil
                         
@@ -189,8 +186,6 @@ struct SlideUpPanelView: View {
                         .foregroundColor(Color("AccentColor"))
                 }
                 .padding(.bottom, 16)
-                
-                
             }
             
             Spacer()
@@ -285,10 +280,10 @@ struct MapInfoView: View {
                         if let workout = polyline.workout {
                             Button(action: {
                                 showInfo = false
-                                //                                selectedPolyline = nil
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                                    selectedPolyline = polyline
-                                }
+                                //Change to nil first to force to update
+                                selectedPolyline = nil
+                                selectedPolyline = polyline
+                                
                                 print("New workout selected in info panel")
                             }) {
                                 HStack {
@@ -333,7 +328,6 @@ struct MapContainerView: UIViewRepresentable {
     //To prevent re-zooming after selecting an individual polyline
     private let shouldZoomToPolylines = ManagedAtomic<Bool>(true)
     
-    
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView(frame: .zero)
         mapView.delegate = context.coordinator
@@ -348,6 +342,7 @@ struct MapContainerView: UIViewRepresentable {
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
         print("updating")
+        
         if uiView.mapType != mapType {
             uiView.mapType = mapType
         }
@@ -369,36 +364,39 @@ struct MapContainerView: UIViewRepresentable {
             }
         }
         
-        // Also remove and re-add it to have it display at the front
-//        uiView.removeOverlay(selectedPolyline)
-//        uiView.addOverlay(selectedPolyline)
-        
-        // Set selected line highlight
         // Set selected line highlight
         if let selectedPolyline = selectedPolyline {
-
-            
             if let renderer = uiView.renderer(for: selectedPolyline) as? MKPolylineRenderer {
-  
                 renderer.strokeColor = UIColor(Color("RouteSelected"))
             } else {
+                print("Alt")
                 // Create a new renderer and set it for the selected polyline
                 let renderer = MKPolylineRenderer(overlay: selectedPolyline) //TODO unify this with the coordinator
                 renderer.strokeColor = UIColor(Color("RouteSelected"))
-                renderer.lineWidth = 5
+                renderer.lineWidth = 6
                 uiView.addOverlay(selectedPolyline)
                 uiView.renderer(for: selectedPolyline)
                 
             }
         }
-
+        
         // Zoom to selected polyline if it exists
         if let selectedPolyline = selectedPolyline {
             zoomToWorkoutPolyline(mapView: uiView, workout: selectedPolyline)
         }
+        
+        // Bring selected polyline to front after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            bringSelectedPolylineToFront(uiView)
+        }
     }
-    
-    
+
+    private func bringSelectedPolylineToFront(_ mapView: MKMapView) {
+        if let selectedPolyline = selectedPolyline {
+            mapView.removeOverlay(selectedPolyline)
+            mapView.addOverlay(selectedPolyline)
+        }
+    }
     
     private func setHasDrawnPolylines() {
         DispatchQueue.main.async {
@@ -426,8 +424,6 @@ struct MapContainerView: UIViewRepresentable {
     func plotWorkouts(on mapView: MKMapView) {
         // Remove all existing polylines before adding new ones
         mapView.removeOverlays(mapView.overlays)
-        
-        
         
         let dispatchGroup = DispatchGroup()
         
@@ -469,8 +465,6 @@ struct MapContainerView: UIViewRepresentable {
         mapView.setVisibleMapRect(workout.boundingMapRect, edgePadding: UIEdgeInsets(top: 20, left: 20, bottom: 40, right: 20), animated: true)
     }
     
-    
-    
     func zoomToWorkoutPolylines(mapView: MKMapView) {
         print("Zooming to all")
         var boundingRect: MKMapRect?
@@ -489,7 +483,7 @@ struct MapContainerView: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+        return Coordinator(self)
     }
     
     class Coordinator: NSObject, MKMapViewDelegate {
@@ -503,14 +497,10 @@ struct MapContainerView: UIViewRepresentable {
             if overlay is WorkoutStoreMKPolyline {
                 let renderer = MKPolylineRenderer(overlay: overlay)
                 
-                if let tappedPolyline = overlay as? WorkoutStoreMKPolyline, let selectedPolyline = parent.selectedPolyline {
-                    // Change color for the tapped polyline
-                    renderer.strokeColor = tappedPolyline.isEqual(selectedPolyline) ? UIColor(Color("RouteSelected")) : UIColor(Color("Route"))
-                } else {
-                    renderer.strokeColor = UIColor(Color("Route"))
-                }
-                
+                //Only handle not-selected lines because none are initialized as selected
+                renderer.strokeColor = UIColor(Color("Route"))
                 renderer.lineWidth = 6
+                
                 return renderer
             }
             
@@ -537,23 +527,19 @@ struct MapContainerView: UIViewRepresentable {
                 }
             }
             
-            // Update the color of the selected polyline and bring it to the front
-            if let newPolyline = closestPolyline {
-                if let previousPolyline = parent.selectedPolyline, let renderer = mapView.renderer(for: previousPolyline) as? MKPolylineRenderer {
-                    renderer.strokeColor = UIColor(Color("Route"))
-                }
-                parent.selectedPolyline = newPolyline
-                
-                // Remove and re-add the selected polyline to bring it to the front
-                mapView.removeOverlay(newPolyline)
-                mapView.addOverlay(newPolyline)
-                
-                if let renderer = mapView.renderer(for: newPolyline) as? MKPolylineRenderer {
-                    renderer.strokeColor = UIColor(Color("RouteSelected"))
-                }
-                
-                parent.zoomToWorkoutPolyline(mapView: mapView, workout: closestPolyline)
+            // Update the selected polyline
+            if let polyline = closestPolyline {
+                handlePolylineSelection(polyline, mapView: mapView)
             }
+        }
+
+        func handlePolylineSelection(_ polyline: WorkoutStoreMKPolyline, mapView: MKMapView) {
+            
+            parent.selectedPolyline = polyline
+            
+            // Remove and re-add the selected polyline to bring it to the front
+            mapView.removeOverlay(polyline)
+            mapView.addOverlay(polyline)
         }
         
         
@@ -587,7 +573,6 @@ struct MapContainerView: UIViewRepresentable {
         
     }
 }
-
 
 struct MapView_Previews: PreviewProvider {
     static var previews: some View {
