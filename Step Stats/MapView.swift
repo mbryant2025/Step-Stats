@@ -4,6 +4,7 @@ import MapKit
 import Atomics
 
 let store = HKHealthStore()
+let sheetAnimationDelay = 0.4
 
 class WorkoutStoreMKPolyline: MKPolyline {
     var workout: HKWorkout?
@@ -21,12 +22,16 @@ struct MapView: View {
     @State private var selectedWorkoutPolyline: WorkoutStoreMKPolyline?
     @State private var mapType: MKMapType = .standard
     @State private var polylines: [WorkoutStoreMKPolyline] = []
+    @State private var showAlert = false
+    
+    //shared in order to persist sorting between opening the sheet
     @State private var sortAscending = false
     @State private var sortCriteria = SortCriteria.date
     
     var body: some View {
+        
         ZStack {
-            MapContainerView(selectedPolyline: $selectedWorkoutPolyline, mapType: $mapType, polylines: $polylines)
+            MapContainerView(selectedPolyline: $selectedWorkoutPolyline, mapType: $mapType, polylines: $polylines, showAlert: $showAlert)
                 .ignoresSafeArea()
             
             VStack {
@@ -45,20 +50,25 @@ struct MapView: View {
                 .padding(.bottom, 16)
             }
         }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text("No Workouts Found"),
+                  message: Text("This mapper plots workout routes tracked with an Apple Watch. This includes walking, running, and cycling."),
+                  dismissButton: .default(Text("OK")))
+        }
         .navigationBarItems(trailing:
-            VStack {
-                HStack {
-                    Button(action: {
-                        showInfo = true
-                    }) {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 18))
-                            .padding(8)
-                    }
-                    .padding(3)
-                    
+                                VStack {
+            HStack {
+                Button(action: {
+                    showInfo = true
+                }) {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 18))
+                        .padding(8)
                 }
+                .padding(3)
+                
             }
+        }
         )
         .overlay(
             Color(UIColor.systemBackground).opacity(0.8)
@@ -68,13 +78,13 @@ struct MapView: View {
         )
         .sheet(isPresented: $showInfo) {
             MapInfoView(
-                   showInfo: $showInfo,
-                   mapType: $mapType,
-                   polylines: $polylines,
-                   selectedPolyline: $selectedWorkoutPolyline,
-                   sortAscending: $sortAscending,
-                   sortCriteria: $sortCriteria
-               )
+                showInfo: $showInfo,
+                mapType: $mapType,
+                polylines: $polylines,
+                selectedPolyline: $selectedWorkoutPolyline,
+                sortAscending: $sortAscending,
+                sortCriteria: $sortCriteria
+            )
         }
         .sheet(isPresented: $showPanel) {
             SlideUpPanelView(showPanel: $showPanel, selectedPolyline: $selectedWorkoutPolyline, showInfo: $showInfo)
@@ -113,23 +123,64 @@ struct SlideUpPanelView: View {
     
     var content: some View {
         VStack {
-            if let selectedPolyline = selectedPolyline {
-                if let workout = selectedPolyline.workout {
+            if let selectedPoly = selectedPolyline {
+                if let workout = selectedPoly.workout {
                     Text(workout.description)
                         .font(.headline)
                         .padding()
+                    
+                    Button(action: {
+                        showPanel = false
+                        // Removing and re-adding the line automatically re zooms
+                        let temp = selectedPolyline
+                        selectedPolyline = nil
+                        
+                        //Small delay to allow for animation of sheets
+                        DispatchQueue.main.asyncAfter(deadline: .now() + sheetAnimationDelay) {
+                            selectedPolyline = temp
+                        }
+                    }) {
+                        Text("Re-Zoom")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color("ButtonColor1"))
+                            .cornerRadius(10)
+                    }
+                    .padding(.bottom, 16)
                 }
             }
             else {
-
-                Text("Select a workout by tapping its route on the map or find it in the table under the info pane: ")
-                    .font(.headline)
-                    .padding()
+                
+                Spacer()
+                
+                VStack(alignment: .center) {
+                    HStack {
+                        Text("The selected route is highlighted in")
+                            .font(.headline)
+                        Text("blue")
+                            .font(.headline)
+                            .foregroundColor(Color("RouteSelected"))
+                    }
+                    HStack {
+                        Text("All other routes are shown in")
+                            .font(.headline)
+                        Text("purple")
+                            .font(.headline)
+                            .foregroundColor(Color("Route"))
+                    }
+                    .padding(.bottom)
+                    
+                    Text("Select a workout by tapping its route on the map or find it in the info pane: ")
+                        .font(.headline)
+                        .padding(.bottom)
+                }
+                .multilineTextAlignment(.center)
                 
                 Button(action: {
                     showPanel = false
                     //Small delay to allow for animation of sheets
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + sheetAnimationDelay) {
                         showInfo = true
                     }
                 }) {
@@ -139,22 +190,11 @@ struct SlideUpPanelView: View {
                 }
                 .padding(.bottom, 16)
                 
-                Text("The selected route is highlighted in ")
-                    .font(.headline) +
-                    Text("blue")
-                    .font(.headline)
-                    .foregroundColor(Color("RouteSelected")) +
-                    Text(", all others are shown in ")
-                    .font(.headline) +
-                    Text("purple")
-                    .font(.headline)
-                    .foregroundColor(Color("Route")) +
-                    Text(".")
-                    .font(.headline)
+                
             }
             
             Spacer()
-
+            
             Button(action: {
                 showPanel = false
             }) {
@@ -192,8 +232,6 @@ struct MapInfoView: View {
         return dateFormatter.string(from: date)
     }
     
-    
-    
     let additionalText = "Additional Text"
     
     var sortedPolylines: [WorkoutStoreMKPolyline] {
@@ -212,8 +250,6 @@ struct MapInfoView: View {
             }
         }
     }
-    
-    
     
     var body: some View {
         NavigationView {
@@ -277,7 +313,6 @@ struct MapInfoView: View {
                             }
                         }
                     }
-
                 }
             }
             .navigationTitle("Mapper Info")
@@ -286,14 +321,13 @@ struct MapInfoView: View {
             })
         }
     }
-
-    
 }
 
 struct MapContainerView: UIViewRepresentable {
     @Binding var selectedPolyline: WorkoutStoreMKPolyline?
     @Binding var mapType: MKMapType
     @Binding var polylines: [WorkoutStoreMKPolyline]
+    @Binding var showAlert: Bool
     
     @State private var workouts: [HKWorkout] = []
     @State private var hasDrawnPolylines = false
@@ -316,16 +350,16 @@ struct MapContainerView: UIViewRepresentable {
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
         print("calling update")
-//        if uiView.mapType != mapType {
-//            uiView.mapType = mapType
-//
-//            // Remove all existing polylines when changing the map type
-//            uiView.removeOverlays(uiView.overlays)
-//        }
-//
-//
-//
-//
+        //        if uiView.mapType != mapType {
+        //            uiView.mapType = mapType
+        //
+        //            // Remove all existing polylines when changing the map type
+        //            uiView.removeOverlays(uiView.overlays)
+        //        }
+        //
+        //
+        //
+        //
         if workouts.isEmpty {
             fetchWorkouts()
             return
@@ -343,7 +377,10 @@ struct MapContainerView: UIViewRepresentable {
                 renderer.strokeColor = UIColor(Color("Route"))
             }
         }
-       
+        
+        print("here is the selected one:")
+        print(selectedPolyline)
+        
         
         // Set selected line highlight
         if let selectedPolyline = selectedPolyline {
@@ -353,7 +390,8 @@ struct MapContainerView: UIViewRepresentable {
             uiView.addOverlay(selectedPolyline)
             
             if let renderer = uiView.renderer(for: selectedPolyline) as? MKPolylineRenderer {
-                    renderer.strokeColor = UIColor(Color("RouteSelected"))
+                renderer.strokeColor = UIColor(Color("RouteSelected"))
+                print("route highlighted")
             }
         }
         
@@ -364,7 +402,7 @@ struct MapContainerView: UIViewRepresentable {
         
         
         
-
+        
         
     }
     
@@ -381,6 +419,10 @@ struct MapContainerView: UIViewRepresentable {
             readWorkouts { fetchedWorkouts in
                 if let fetchedWorkouts = fetchedWorkouts {
                     workouts = fetchedWorkouts
+                    print(workouts.count)
+                    if workouts.isEmpty {
+                        showAlert = true
+                    }
                 }
             }
         }
@@ -422,18 +464,18 @@ struct MapContainerView: UIViewRepresentable {
             self.shouldZoomToPolylines.store(false, ordering: .relaxed)
         }
     }
-
+    
     
     func zoomToWorkoutPolyline(mapView: MKMapView, workout: WorkoutStoreMKPolyline?) {
         guard let workout = workout else {
             print("Workout does not exist, cannot zoom")
             return
         }
-
+        
         mapView.setVisibleMapRect(workout.boundingMapRect, edgePadding: UIEdgeInsets(top: 20, left: 20, bottom: 40, right: 20), animated: true)
     }
-
-
+    
+    
     
     func zoomToWorkoutPolylines(mapView: MKMapView) {
         print("Zooming to all")
@@ -480,7 +522,7 @@ struct MapContainerView: UIViewRepresentable {
             
             return MKOverlayRenderer(overlay: overlay)
         }
-
+        
         
         @objc func handlePolylineTap(_ gestureRecognizer: UITapGestureRecognizer) {
             let mapView = gestureRecognizer.view as! MKMapView
@@ -548,7 +590,7 @@ struct MapContainerView: UIViewRepresentable {
             
             return closestDistance
         }
-
+        
     }
 }
 
