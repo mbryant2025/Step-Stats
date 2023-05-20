@@ -232,8 +232,6 @@ struct MapInfoView: View {
         return dateFormatter.string(from: date)
     }
     
-    let additionalText = "Additional Text"
-    
     var sortedPolylines: [WorkoutStoreMKPolyline] {
         switch sortCriteria {
         case .date:
@@ -287,7 +285,7 @@ struct MapInfoView: View {
                         if let workout = polyline.workout {
                             Button(action: {
                                 showInfo = false
-                                selectedPolyline = nil
+                                //                                selectedPolyline = nil
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                                     selectedPolyline = polyline
                                 }
@@ -349,24 +347,17 @@ struct MapContainerView: UIViewRepresentable {
     
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
-        print("calling update")
-        //        if uiView.mapType != mapType {
-        //            uiView.mapType = mapType
-        //
-        //            // Remove all existing polylines when changing the map type
-        //            uiView.removeOverlays(uiView.overlays)
-        //        }
-        //
-        //
-        //
-        //
+        print("updating")
+        if uiView.mapType != mapType {
+            uiView.mapType = mapType
+        }
+        
         if workouts.isEmpty {
             fetchWorkouts()
             return
         }
         
         if !hasDrawnPolylines {
-            print("drawing lines here")
             plotWorkouts(on: uiView)
             setHasDrawnPolylines()
         }
@@ -378,33 +369,36 @@ struct MapContainerView: UIViewRepresentable {
             }
         }
         
-        print("here is the selected one:")
-        print(selectedPolyline)
-        
+        // Also remove and re-add it to have it display at the front
+//        uiView.removeOverlay(selectedPolyline)
+//        uiView.addOverlay(selectedPolyline)
         
         // Set selected line highlight
+        // Set selected line highlight
         if let selectedPolyline = selectedPolyline {
-            
-            //Also remove and re-add it to have it display at the front
-            uiView.removeOverlay(selectedPolyline)
-            uiView.addOverlay(selectedPolyline)
+
             
             if let renderer = uiView.renderer(for: selectedPolyline) as? MKPolylineRenderer {
+  
                 renderer.strokeColor = UIColor(Color("RouteSelected"))
-                print("route highlighted")
+            } else {
+                // Create a new renderer and set it for the selected polyline
+                let renderer = MKPolylineRenderer(overlay: selectedPolyline) //TODO unify this with the coordinator
+                renderer.strokeColor = UIColor(Color("RouteSelected"))
+                renderer.lineWidth = 5
+                uiView.addOverlay(selectedPolyline)
+                uiView.renderer(for: selectedPolyline)
+                
             }
         }
-        
+
         // Zoom to selected polyline if it exists
         if let selectedPolyline = selectedPolyline {
             zoomToWorkoutPolyline(mapView: uiView, workout: selectedPolyline)
         }
-        
-        
-        
-        
-        
     }
+    
+    
     
     private func setHasDrawnPolylines() {
         DispatchQueue.main.async {
