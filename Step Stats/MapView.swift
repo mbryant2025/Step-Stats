@@ -384,11 +384,6 @@ struct MapContainerView: UIViewRepresentable {
         if let selectedPolyline = selectedPolyline {
             zoomToWorkoutPolyline(mapView: uiView, workout: selectedPolyline)
         }
-        
-        // Bring selected polyline to front after 3 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            bringSelectedPolylineToFront(uiView)
-        }
     }
 
     private func bringSelectedPolylineToFront(_ mapView: MKMapView) {
