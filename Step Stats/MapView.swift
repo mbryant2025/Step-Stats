@@ -121,7 +121,7 @@ struct SlideUpPanelView: View {
         VStack {
             if let selectedPoly = selectedPolyline {
                 if let workout = selectedPoly.workout {
-                    Text(workout.description)
+                    Text(convertWorkoutToString(workout: workout))
                         .font(.headline)
                         .padding()
                     

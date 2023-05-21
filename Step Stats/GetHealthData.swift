@@ -335,6 +335,65 @@ func getLocationDataForRoute(givenRoute: HKWorkoutRoute) async -> [CLLocation] {
     
 }
 
+func convertWorkoutToString(workout: HKWorkout) -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateStyle = .medium
+    dateFormatter.timeStyle = .short
+    
+
+    let date = dateFormatter.string(from: workout.startDate)
+    let duration = String(format: "%.2f", workout.duration / 60.0) // Convert duration to minutes
+    let distance = workout.totalDistance?.doubleValue(for: HKUnit.meter()) ?? 0.0 // Convert distance to meters
+    let distanceUnits = distance * meterToKm * (UnitManager.shared.unitType == .km ? 1 : kmToMiles)
+    let distanceUnitsString = String(format: "%.2f", distanceUnits) + " " + (UnitManager.shared.unitType == .km ? "km" : "mi")
+    let temperature = getTemperatureFromMetadata(workout: workout)
+    let pace = calculatePace(distance: workout.totalDistance, duration: workout.duration) // Calculate the pace
+    let workoutType = getWorkoutType(for: workout) // Get the type of workout
+
+    let workoutString = """
+        Date: \(date)
+        Workout Type: \(workoutType)
+        Duration: \(duration) minutes
+        Distance: \(distanceUnitsString)
+        Temperature: \(temperature)
+        Pace: \(pace) min/\(UnitManager.shared.unitType == .km ? "km" : "mi")
+        """
+
+    return workoutString
+}
+
+func getTemperatureFromMetadata(workout: HKWorkout) -> String {
+    guard let metadata = workout.metadata else {
+        return "Unknown Temperature"
+    }
+
+    if let temperatureQuantity = metadata[HKMetadataKeyWeatherTemperature] as? HKQuantity {
+        let temperatureUnit = HKUnit.degreeFahrenheit()
+        let temperatureValue = temperatureQuantity.doubleValue(for: temperatureUnit)
+        //convert to celcius if the unit is km
+        let temperatureCelsius = UnitManager.shared.unitType == .km ? FarenheitToCelcius(temperatureValue) : temperatureValue
+        return String(format: "%.1f", temperatureCelsius) + " " + (UnitManager.shared.unitType == .km ? "°C" : "°F")
+    }
+
+    return "Unknown Temperature"
+}
+
+func calculatePace(distance: HKQuantity?, duration: TimeInterval) -> String {
+    guard let distance = distance else {
+        return "Unknown Pace"
+    }
+
+    let distanceInKilometers = distance.doubleValue(for: HKUnit.meterUnit(with: .kilo))
+    let unitDistance = UnitManager.shared.unitType == .km ? distanceInKilometers : distanceInKilometers * kmToMiles
+    let paceInSecondsPerDistance = duration / unitDistance
+
+    let paceMinutes = Int(paceInSecondsPerDistance / 60)
+    let paceSeconds = Int(paceInSecondsPerDistance.truncatingRemainder(dividingBy: 60))
+
+    return String(format: "%02d:%02d", paceMinutes, paceSeconds)
+}
+
+
 public let workoutTypeMap: [Int: String] = [
     1: "American Football",
     2: "Archery",

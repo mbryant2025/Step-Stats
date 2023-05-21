@@ -24,3 +24,12 @@ class UnitManager {
     
     private init() {}
 }
+
+public func FarenheitToCelcius(_ farenheit: Double) -> Double {
+    return (farenheit - 32) * 5 / 9
+}
+
+public func CelciusToFarenheit(_ celcius: Double) -> Double {
+    return celcius * 9 / 5 + 32
+}
+
