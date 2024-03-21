@@ -22,16 +22,36 @@ struct MapView: View {
     @State private var mapType: MKMapType = .standard
     @State private var polylines: [WorkoutStoreMKPolyline] = []
     @State private var showAlert = false
+    @State private var isLoading = true
     
-    //shared in order to persist sorting between opening the sheet
+    // Shared in order to persist sorting between opening the sheet
     @State private var sortAscending = false
     @State private var sortCriteria = SortCriteria.date
     
     var body: some View {
         
         ZStack {
-            MapContainerView(selectedPolyline: $selectedWorkoutPolyline, mapType: $mapType, polylines: $polylines, showAlert: $showAlert)
+            MapContainerView(selectedPolyline: $selectedWorkoutPolyline, mapType: $mapType, polylines: $polylines, showAlert: $showAlert, isLoading: $isLoading)
                 .ignoresSafeArea()
+
+           if isLoading {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.black.opacity(0.7)) // Gray background with rounded corners
+                    .frame(width: 300, height: 200)
+                    .overlay(
+                        VStack {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(2)
+                                .padding(.top, 16)
+                            Text("Plotting Workouts...")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding(.top, 24)
+                        }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center) // Center the gray box
+            }
             
             VStack {
                 Spacer()
@@ -222,7 +242,7 @@ struct MapInfoView: View {
     
     private func formatDate(_ date: Date) -> String {
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "M/d/yy"
+        dateFormatter.dateFormat = UnitManager.shared.unitType == .mi ? "M/d/yy" : "d/M/yy"
         
         return dateFormatter.string(from: date)
     }
@@ -252,7 +272,6 @@ struct MapInfoView: View {
                         Text("Standard").tag(MKMapType.standard)
                         Text("Satellite").tag(MKMapType.satellite)
                         Text("Hybrid").tag(MKMapType.hybrid)
-                        Text("Muted").tag(MKMapType.mutedStandard)
                     }
                     .pickerStyle(SegmentedPickerStyle())
                 }
@@ -321,9 +340,14 @@ struct MapContainerView: UIViewRepresentable {
     @Binding var mapType: MKMapType
     @Binding var polylines: [WorkoutStoreMKPolyline]
     @Binding var showAlert: Bool
+    @Binding var isLoading: Bool
     
     @State private var workouts: [HKWorkout] = []
     @State private var hasDrawnPolylines = false
+    
+    // To prevent selecting a new polyline after less than 1 second
+    private let polylineSelectionDelay = 1.0
+    var lastPolylineSelectionTime = Date()
     
     //To prevent re-zooming after selecting an individual polyline
     private let shouldZoomToPolylines = ManagedAtomic<Bool>(true)
@@ -445,6 +469,7 @@ struct MapContainerView: UIViewRepresentable {
         if self.shouldZoomToPolylines.load(ordering: .relaxed) {
             dispatchGroup.notify(queue: .main) {
                 zoomToWorkoutPolylines(mapView: mapView)
+                isLoading = false
             }
             self.shouldZoomToPolylines.store(false, ordering: .relaxed)
         }
@@ -524,7 +549,11 @@ struct MapContainerView: UIViewRepresentable {
             
             // Update the selected polyline
             if let polyline = closestPolyline {
-                handlePolylineSelection(polyline, mapView: mapView)
+                // Check that the polyline was tapped within the last 1 second
+                if polyline != parent.selectedPolyline && Date().timeIntervalSince(parent.lastPolylineSelectionTime) > parent.polylineSelectionDelay {
+                    parent.lastPolylineSelectionTime = Date()
+                    handlePolylineSelection(polyline, mapView: mapView)
+                }
             }
         }
 
@@ -541,7 +570,7 @@ struct MapContainerView: UIViewRepresentable {
         func distanceToPolyline(_ coordinate: CLLocationCoordinate2D, polyline: WorkoutStoreMKPolyline) -> CLLocationDistance {
             var closestDistance: CLLocationDistance = Double.infinity
             
-            let tolerance: CLLocationDistance = 15 // Tolerance in meters
+            let tolerance: CLLocationDistance = 100000 // Tolerance in meters
             
             for i in 0 ..< polyline.pointCount - 1 {
                 let startMapPoint = polyline.points()[i]

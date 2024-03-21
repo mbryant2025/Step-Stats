@@ -8,27 +8,32 @@
 import SwiftUI
 
 struct MainView: View {
-    @State private var widgets = [
-        WidgetData(title: "Cumulative Stats", destination: AnyView(CumulativeView()), symbolName: "chart.bar.fill", hasData: false, data:""),
-        WidgetData(title: "Records", destination: AnyView(CumulativeView()), symbolName: "list.bullet.rectangle", hasData: false, data:""),
-        WidgetData(title: "Workout Mapper", destination: AnyView(MapView()), symbolName: "map.fill", hasData: false, data:""),
-    ]
     
     @State private var showSettings = false
     @State private var selectedUnits = 0
     
-    private let buttonHeight: CGFloat = 100
-    private let widgetSpacing: CGFloat = 10
-    
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: widgetSpacing) {
-                    WidgetView(widgets: widgets, buttonHeight: buttonHeight)
+       NavigationView {
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack {
+                        Spacer(minLength: geometry.size.height / 3.0)
+                        NavigationLink(destination: MapView()) {
+                            HStack {
+                                Text("Map Workouts")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color("ButtonColor1"))
+                                .cornerRadius(10)
+                            }
+                        }
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .padding()
             }
-            .navigationBarTitle("Step Stats")
+            .navigationBarTitle("")
             .navigationBarItems(trailing:
                 Button(action: {
                     showSettings = true
