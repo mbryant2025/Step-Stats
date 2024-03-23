@@ -22,6 +22,8 @@ struct MainView: View {
     @State private var mapType: MKMapType = .standard
     @State private var polylines: [WorkoutStoreMKPolyline] = []
     @State private var showAlert = false
+    @State private var pauseRendering = false
+    @State private var warnNeedsOneWorkoutOn = false
     @State private var isLoading = true
 
     @State private var showSettings = false
@@ -53,10 +55,10 @@ struct MainView: View {
                     needsPolylineUpdate: $needsPolylineUpdate,
                     showWalking: $showWalking,
                     showRunning: $showRunning,
-                    showCycling: $showCycling
+                    showCycling: $showCycling,
+                    pauseRendering: $pauseRendering
                 )
                 .ignoresSafeArea()
-
 
                 VStack {
                     // Top black bar with buttons
@@ -127,7 +129,7 @@ struct MainView: View {
 
             if isLoading {
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.black.opacity(0.7)) // Gray background with rounded corners
+                        .fill(Color.black.opacity(0.7))
                         .frame(width: 300, height: 200)
                         .overlay(
                             VStack {
@@ -141,12 +143,8 @@ struct MainView: View {
                                     .padding(.top, 24)
                             }
                         )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center) // Center the gray box
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 }
-
-            
-            
-            
         }
         .sheet(isPresented: $showInfo) {
             MapInfoView(
@@ -170,8 +168,17 @@ struct MainView: View {
                 showWalking: $showWalking,
                 showRunning: $showRunning,
                 showCycling: $showCycling,
-                needsPolylineUpdate: $needsPolylineUpdate
+                needsPolylineUpdate: $needsPolylineUpdate,
+                warnNeedsOneWorkoutOn: $warnNeedsOneWorkoutOn,
+                pauseRendering: $pauseRendering
             )
+        }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text("No Workouts Found"),
+                  message: Text("This mapper plots workout routes tracked with an Apple Watch. This includes outdoor walking, running, and cycling."),
+                  dismissButton: .default(Text("OK")) {
+                    pauseRendering = true
+                  })
         }
 
         }
@@ -403,6 +410,8 @@ struct SettingsView: View {
     @Binding var showRunning: Bool
     @Binding var showCycling: Bool
     @Binding var needsPolylineUpdate: Bool
+    @Binding var warnNeedsOneWorkoutOn: Bool
+    @Binding var pauseRendering: Bool
 
     // Temp variables to store the current state of the toggles before updating the shared state
     // Initialized to the current state of the shared state
@@ -411,7 +420,7 @@ struct SettingsView: View {
     @State private var tempShowRunning: Bool
     @State private var tempShowCycling: Bool
 
-    init(showSettings: Binding<Bool>, selectedUnits: Binding<Int>, mapType: Binding<MKMapType>, showWalking: Binding<Bool>, showRunning: Binding<Bool>, showCycling: Binding<Bool>, needsPolylineUpdate: Binding<Bool>) {
+    init(showSettings: Binding<Bool>, selectedUnits: Binding<Int>, mapType: Binding<MKMapType>, showWalking: Binding<Bool>, showRunning: Binding<Bool>, showCycling: Binding<Bool>, needsPolylineUpdate: Binding<Bool>, warnNeedsOneWorkoutOn: Binding<Bool>, pauseRendering: Binding<Bool>) {
         self._showSettings = showSettings
         self._selectedUnits = selectedUnits
         self._mapType = mapType
@@ -419,6 +428,8 @@ struct SettingsView: View {
         self._showRunning = showRunning
         self._showCycling = showCycling
         self._needsPolylineUpdate = needsPolylineUpdate
+        self._warnNeedsOneWorkoutOn = warnNeedsOneWorkoutOn
+        self._pauseRendering = pauseRendering
 
         self._tempShowWalking = State(initialValue: showWalking.wrappedValue)
         self._tempShowRunning = State(initialValue: showRunning.wrappedValue)
@@ -466,6 +477,7 @@ struct SettingsView: View {
                     showRunning = tempShowRunning
                     showCycling = tempShowCycling
                     needsPolylineUpdate = true
+                    pauseRendering = false
                 }
             })
         }
@@ -482,6 +494,7 @@ struct MapContainerView: UIViewRepresentable {
     @Binding var showWalking: Bool
     @Binding var showRunning: Bool
     @Binding var showCycling: Bool
+    @Binding var pauseRendering: Bool
 
     @State var hasDrawnPolylines = false
     @State var workouts: [HKWorkout] = []
@@ -505,6 +518,16 @@ struct MapContainerView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
+        
+        if uiView.mapType != mapType {
+            uiView.mapType = mapType
+        }
+        
+        print(pauseRendering)
+        
+        if(pauseRendering) {
+            return
+        }
 
         // Check if we are rerendering
         if needsPolylineUpdate && !polylines.isEmpty {
@@ -512,14 +535,12 @@ struct MapContainerView: UIViewRepresentable {
                 isLoading = true
                 needsPolylineUpdate = false
                 polylines.removeAll()
-                hasDrawnPolylines = false
+                selectedPolyline = nil
                 // Nuke the workouts and reload them
                 fetchWorkouts()
+                hasDrawnPolylines = false
             }
-        }
-        
-        if uiView.mapType != mapType {
-            uiView.mapType = mapType
+            return
         }
         
         if workouts.isEmpty {
@@ -529,15 +550,14 @@ struct MapContainerView: UIViewRepresentable {
         }
         
         if !hasDrawnPolylines {
-            print("Plotting workouts...")
-            plotWorkouts(on: uiView)
-            DispatchQueue.main.async {
+            // Delay a bit to allow for the workouts to be fetched (important when updating the workout type)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                print("Plotting workouts...")
+                plotWorkouts(on: uiView)
                 hasDrawnPolylines = true
             }
         }
 
-        print("Updating UI...")
-        
         // Set all polylines to default color
         for polyline in polylines {
             if let renderer = uiView.renderer(for: polyline) as? MKPolylineRenderer {
@@ -578,13 +598,22 @@ struct MapContainerView: UIViewRepresentable {
         print("fetching workouts")
         requestAuthorization()
         Task {
-            readWorkouts { fetchedWorkouts in
+            readWorkouts()
+            { fetchedWorkouts in
                 if let fetchedWorkouts = fetchedWorkouts {
-                    workouts = fetchedWorkouts
-                    print(workouts.count)
-                    if workouts.isEmpty {
-                        showAlert = true
+                    //print workout types for debugging
+                    print("We are looking for \(showWalking), \(showRunning), \(showCycling) workouts.")
+                    for workout in fetchedWorkouts {
+                        print(getWorkoutType(for: workout))
                     }
+                    // Use getWorkoutType to filter fetched workouts before setting workouts
+                    workouts = fetchedWorkouts.filter { workout in
+                        return showWalking && getWorkoutType(for: workout) == "Walking" ||
+                            showRunning && getWorkoutType(for: workout) == "Running" ||
+                            showCycling && getWorkoutType(for: workout) == "Cycling"
+                    }
+                    print(workouts.count)
+                    showAlert = workouts.isEmpty
                 }
             }
         }
@@ -592,6 +621,9 @@ struct MapContainerView: UIViewRepresentable {
     
     
     func plotWorkouts(on mapView: MKMapView) {
+
+        print(workouts.count)
+
         // Remove all existing polylines before adding new ones
         mapView.removeOverlays(mapView.overlays)
         
